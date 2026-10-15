@@ -1,8 +1,17 @@
 import { FORMAS_PAGAMENTO } from './categorias';
-import { adicionarDias, adicionarMeses, competenciaDe, diferencaEmDias, hojeISO, paraDate } from './datas';
+import {
+  adicionarDias,
+  adicionarMeses,
+  competenciaDe,
+  diferencaEmDias,
+  hojeISO,
+  paraDate,
+  ultimoDiaDoMes,
+} from './datas';
 import { somarCentavos } from './dinheiro';
 import type {
   Acervo,
+  Cartao,
   Centavos,
   Competencia,
   DataISO,
@@ -633,6 +642,41 @@ export function fechamentosPorDia(
   }
 
   return porDia;
+}
+
+/** O dia combinado dentro do mês, sem estourar o fim dele (31 em fevereiro vira 28). */
+function diaDoMes(competencia: Competencia, dia: number): DataISO {
+  const ultimo = Number(ultimoDiaDoMes(competencia).slice(8));
+  const escolhido = Math.min(Math.max(1, Math.round(dia)), ultimo);
+  return `${competencia}-${String(escolhido).padStart(2, '0')}`;
+}
+
+/**
+ * Vencimento da fatura para uma compra feita em `dataCompra`.
+ *
+ * A compra entra na fatura que fecha no próprio mês quando foi feita até o dia
+ * do fechamento; depois disso, cai na fatura seguinte. O vencimento é o dia
+ * combinado no mês do fechamento quando ele vem depois, senão no mês seguinte
+ * (é o caso do cartão que fecha dia 25 e vence dia 5).
+ */
+export function vencimentoDaFatura(cartao: Cartao, dataCompra: DataISO): DataISO {
+  const mesDaCompra = competenciaDe(dataCompra);
+  const fechouNoMes = Number(dataCompra.slice(8)) <= cartao.diaFechamento;
+  const mesFechamento = fechouNoMes ? mesDaCompra : adicionarMeses(mesDaCompra, 1);
+  const mesmoMes = cartao.diaVencimento >= cartao.diaFechamento;
+  const mesVencimento = mesmoMes ? mesFechamento : adicionarMeses(mesFechamento, 1);
+
+  return diaDoMes(mesVencimento, cartao.diaVencimento);
+}
+
+/**
+ * Melhor dia de compra: o primeiro dia depois do fechamento.
+ *
+ * Comprar a partir daí empurra a compra para a fatura seguinte, ou seja, quase
+ * um mês a mais de prazo para pagar.
+ */
+export function melhorDiaDeCompra(cartao: Cartao): number {
+  return cartao.diaFechamento >= 28 ? 1 : cartao.diaFechamento + 1;
 }
 
 /** Índice dos fechamentos pela chave do dia, para abrir um lançamento sem varrer a lista. */

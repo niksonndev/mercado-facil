@@ -92,8 +92,26 @@ export interface Fornecedor {
   criadoEm: string;
 }
 
-/** Boleto, cheque ou compra à vista de um fornecedor. */
-export type TipoConta = 'boleto' | 'cheque' | 'avista';
+/** Boleto, cheque, compra à vista ou fatura do cartão da empresa. */
+export type TipoConta = 'boleto' | 'cheque' | 'avista' | 'fatura';
+
+/**
+ * Cartão de crédito da empresa.
+ *
+ * O que interessa aqui não é a bandeira, e sim o ciclo da fatura: quando ela
+ * fecha e quando vence. Com isso o app responde a pergunta que o lojista faz
+ * antes de comprar ("melhor dia de compra") e calcula o vencimento sozinho.
+ */
+export interface Cartao {
+  id: Id;
+  nome: string;
+  /** Dia do mês em que a fatura fecha. */
+  diaFechamento: number;
+  /** Dia do mês em que a fatura vence. */
+  diaVencimento: number;
+  ativo: boolean;
+  criadoEm: string;
+}
 
 export interface Conta {
   id: Id;
@@ -108,6 +126,9 @@ export interface Conta {
   vencimento: DataISO;
   chequeNumero: string;
   chequeBanco: string;
+  /** Cartão da empresa, quando o lançamento é uma fatura. */
+  cartaoId: Id | null;
+  cartaoNome: string;
   pagoEm: DataISO | null;
   valorPago: Centavos | null;
   formaPagamento: FormaPagamento | null;

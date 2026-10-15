@@ -2,6 +2,7 @@ import { hojeISO } from '../dominio/datas';
 import { vencimentoPadraoFolha } from '../dominio/calculos';
 import { PRAZO_CREDITO_PADRAO } from '../dominio/categorias';
 import type {
+  Cartao,
   Competencia,
   Conta,
   CustoOperacional,
@@ -73,6 +74,18 @@ export function novoPonto(dados: Nascimento<PontoDeVenda>): PontoDeVenda {
 export const salvarPonto = (registro: PontoDeVenda) => db.pontos.put(registro);
 export const removerPonto = (id: Id) => db.pontos.delete(id);
 
+/** Cartão em branco, para o cadastro. */
+export function cartaoVazio(): Cartao {
+  return novoCartao({ nome: '', diaFechamento: 20, diaVencimento: 28, ativo: true });
+}
+
+export function novoCartao(dados: Nascimento<Cartao>): Cartao {
+  return { ...dados, id: gerarId(), criadoEm: agora() };
+}
+
+export const salvarCartao = (registro: Cartao) => db.cartoes.put(registro);
+export const removerCartao = (id: Id) => db.cartoes.delete(id);
+
 export function novoFornecedor(dados: Nascimento<Fornecedor>): Fornecedor {
   return { ...dados, id: gerarId(), criadoEm: agora() };
 }
@@ -92,6 +105,8 @@ export function contaVazia(fornecedor?: Fornecedor): Nascimento<Conta> {
     vencimento: hojeISO(),
     chequeNumero: '',
     chequeBanco: '',
+    cartaoId: null,
+    cartaoNome: '',
     pagoEm: null,
     valorPago: null,
     formaPagamento: null,

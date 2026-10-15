@@ -8,6 +8,7 @@ import { Contas } from './telas/Contas';
 import { Despesas } from './telas/Despesas';
 import { Custos } from './telas/Custos';
 import { Folha } from './telas/Folha';
+import { Banco } from './telas/Banco';
 import { Fornecedores } from './telas/Fornecedores';
 import { Relatorios } from './telas/Relatorios';
 import { Dre } from './telas/Dre';
@@ -25,6 +26,8 @@ function Tela({ caminho }: { caminho: string }) {
       return <Custos />;
     case 'folha':
       return <Folha />;
+    case 'banco':
+      return <Banco />;
     case 'fornecedores':
       return <Fornecedores />;
     case 'relatorios':

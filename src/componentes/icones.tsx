@@ -27,6 +27,7 @@ export type NomeIcone =
   | 'imprimir'
   | 'fechar'
   | 'alerta'
+  | 'banco'
   | 'mercado';
 
 const TRACOS: Record<NomeIcone, string> = {
@@ -54,6 +55,7 @@ const TRACOS: Record<NomeIcone, string> = {
   imprimir: 'M7 8.5V3.5h10V8.5M5 8.5h14v8h-3.5M6 16.5H5M8.5 16.5v4h7v-4',
   fechar: 'M6 6l12 12M18 6 6 18',
   alerta: 'M12 4 2.5 20.5h19zM12 10v4.5M12 17.5h.01',
+  banco: 'M3.5 9 12 3.5 20.5 9M5 9v10M9.5 9v10M14.5 9v10M19 9v10M3 19.5h18M3.5 22h17',
   mercado: 'M4 9.5h16l-1.5-5h-13zM6 9.5v11h12v-11M10 20.5v-5.5h4v5.5',
 };
 

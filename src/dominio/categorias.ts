@@ -43,6 +43,7 @@ export const TIPOS_CONTA: Opcao<TipoConta>[] = [
   { valor: 'boleto', rotulo: 'Boleto', cor: '#38bdf8' },
   { valor: 'cheque', rotulo: 'Cheque', cor: '#c084fc' },
   { valor: 'avista', rotulo: 'À vista', cor: '#34d399' },
+  { valor: 'fatura', rotulo: 'Fatura de cartão', cor: '#f472b6' },
 ];
 
 export const TIPOS_DESPESA: Opcao<TipoDespesa>[] = [

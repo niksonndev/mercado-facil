@@ -1,5 +1,6 @@
 import Dexie, { type Table } from 'dexie';
 import type {
+  Cartao,
   Conta,
   CustoOperacional,
   Despesa,
@@ -26,6 +27,8 @@ export class BancoMercadoFacil extends Dexie {
   pontos!: Table<PontoDeVenda, string>;
   fornecedores!: Table<Fornecedor, string>;
   contas!: Table<Conta, string>;
+  /** Cartões da empresa: a fatura e o melhor dia de compra saem daqui. */
+  cartoes!: Table<Cartao, string>;
   despesas!: Table<Despesa, string>;
   custos!: Table<CustoOperacional, string>;
   funcionarios!: Table<Funcionario, string>;
@@ -59,6 +62,12 @@ export class BancoMercadoFacil extends Dexie {
       pontos: 'id, nome, ativo',
       fechamentos: 'id, data, pontoId',
     });
+
+    // v4: cartão da empresa, para lançar a fatura com o vencimento calculado
+    // pelo ciclo do cartão em vez de digitado.
+    this.version(4).stores({
+      cartoes: 'id, nome, ativo',
+    });
   }
 }
 
@@ -70,6 +79,7 @@ export const TABELAS = [
   'pontos',
   'fornecedores',
   'contas',
+  'cartoes',
   'despesas',
   'custos',
   'funcionarios',

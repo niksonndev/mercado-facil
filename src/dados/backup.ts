@@ -1,5 +1,6 @@
 import { hojeISO } from '../dominio/datas';
 import type {
+  Cartao,
   CategoriaCusto,
   CategoriaDespesa,
   Centavos,
@@ -90,7 +91,7 @@ const comoOpcao = <T extends string>(valor: unknown, opcoes: readonly T[], padra
     : padrao;
 
 const FORMAS = ['dinheiro', 'pix', 'debito', 'credito'] as const;
-const TIPOS_CONTA = ['boleto', 'cheque', 'avista'] as const;
+const TIPOS_CONTA = ['boleto', 'cheque', 'avista', 'fatura'] as const;
 const TIPOS_DESPESA = ['retirada', 'diversos'] as const;
 const CATEGORIAS_DESPESA = [
   'geral',
@@ -169,6 +170,8 @@ function lerConta(bruto: Record<string, unknown>): Conta | null {
     vencimento,
     chequeNumero: comoTexto(bruto.chequeNumero),
     chequeBanco: comoTexto(bruto.chequeBanco),
+    cartaoId: typeof bruto.cartaoId === 'string' ? bruto.cartaoId : null,
+    cartaoNome: comoTexto(bruto.cartaoNome),
     pagoEm: comoData(bruto.pagoEm),
     valorPago: bruto.valorPago == null ? null : comoCentavos(bruto.valorPago),
     formaPagamento:
@@ -256,6 +259,22 @@ function lerPonto(bruto: Record<string, unknown>): PontoDeVenda {
   };
 }
 
+function lerCartao(bruto: Record<string, unknown>): Cartao {
+  const dia = (valor: unknown, padrao: number): number => {
+    const numero = typeof valor === 'number' ? Math.round(valor) : padrao;
+    return Math.min(31, Math.max(1, numero));
+  };
+
+  return {
+    id: id(bruto.id),
+    nome: comoTexto(bruto.nome, 'Cartão'),
+    diaFechamento: dia(bruto.diaFechamento, 20),
+    diaVencimento: dia(bruto.diaVencimento, 28),
+    ativo: comoBooleano(bruto.ativo, true),
+    criadoEm: momento(bruto.criadoEm),
+  };
+}
+
 function lerFolha(bruto: Record<string, unknown>): FolhaItem | null {
   const competencia = comoTexto(bruto.competencia);
   if (!/^\d{4}-\d{2}$/.test(competencia)) return null;
@@ -333,6 +352,7 @@ export async function importarBackup(texto: string): Promise<ResultadoImportacao
   const contas = comoLista(dados.contas)
     .map(lerConta)
     .filter((item): item is Conta => item !== null);
+  const cartoes = comoLista(dados.cartoes).map(lerCartao);
   const despesas = comoLista(dados.despesas)
     .map(lerDespesa)
     .filter((item): item is Despesa => item !== null);
@@ -353,6 +373,7 @@ export async function importarBackup(texto: string): Promise<ResultadoImportacao
     fechamentos: fechamentos.length,
     pontos: pontos.length,
     contas: contas.length,
+    cartoes: cartoes.length,
     despesas: despesas.length,
     custos: custos.length,
     fornecedores: fornecedores.length,
@@ -374,6 +395,7 @@ export async function importarBackup(texto: string): Promise<ResultadoImportacao
     await db.pontos.bulkPut(pontos);
     await db.fornecedores.bulkPut(fornecedores);
     await db.contas.bulkPut(contas);
+    await db.cartoes.bulkPut(cartoes);
     await db.despesas.bulkPut(despesas);
     await db.custos.bulkPut(custos);
     await db.funcionarios.bulkPut(funcionarios);

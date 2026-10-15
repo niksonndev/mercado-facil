@@ -1,8 +1,9 @@
 import { useState } from 'react';
+import { vencimentoDaFatura } from '../dominio/calculos';
 import { FORMAS_PAGAMENTO, TIPOS_CONTA, rotuloTipoConta } from '../dominio/categorias';
 import { formatarDinheiro } from '../dominio/dinheiro';
 import { hojeISO } from '../dominio/datas';
-import type { Conta, Fornecedor, TipoConta } from '../dominio/tipos';
+import type { Cartao, Conta, Fornecedor, TipoConta } from '../dominio/tipos';
 import { salvarConta } from '../dados/repositorio';
 import { Botao, Ficha } from './base';
 import {
@@ -21,31 +22,77 @@ import { useRascunho } from './rascunho';
 export interface PropsFormularioConta {
   registro: Conta;
   fornecedores: Fornecedor[];
+  cartoes: Cartao[];
   aoFechar: () => void;
 }
 
 /**
- * Lançamento de conta de fornecedor: boleto, cheque ou compra à vista.
+ * Lançamento de conta de fornecedor: boleto, cheque, compra à vista ou fatura
+ * do cartão da empresa.
  *
  * O cadastro de fornecedores é sugestão, não exigência — o nome digitado fica
  * gravado no próprio lançamento, então dá para registrar a conta antes de
- * cadastrar a empresa.
+ * cadastrar a empresa. Vale o mesmo para o cartão: cadastrado, o app calcula o
+ * vencimento da fatura sozinho.
  */
-export function FormularioConta({ registro, fornecedores, aoFechar }: PropsFormularioConta) {
+export function FormularioConta({
+  registro,
+  fornecedores,
+  cartoes,
+  aoFechar,
+}: PropsFormularioConta) {
   const { rascunho, atualizar, alterar, erro, definirErro } = useRascunho(registro);
   const [salvando, definirSalvando] = useState(false);
 
   const ehCheque = rascunho.tipo === 'cheque';
+  const ehFatura = rascunho.tipo === 'fatura';
   const pago = Boolean(rascunho.pagoEm);
   const novo = !registro.descricao && !registro.fornecedorNome;
 
   const trocarTipo = (tipo: TipoConta) => {
     // À vista é pago na hora: já marca a data para não esquecer o pagamento.
     const virouAvista = tipo === 'avista' && !rascunho.pagoEm;
+    // A fatura já nasce com o primeiro cartão do cadastro e o vencimento dele.
+    const cartao = cartoes[0];
+    const virouFatura = tipo === 'fatura' && !rascunho.cartaoNome && cartao;
+
     alterar({
       tipo,
       ...(virouAvista
         ? { pagoEm: rascunho.emissao ?? hojeISO(), formaPagamento: 'dinheiro' as const }
+        : {}),
+      ...(virouFatura && cartao
+        ? {
+            cartaoId: cartao.id,
+            cartaoNome: cartao.nome,
+            vencimento: vencimentoDaFatura(cartao, rascunho.emissao ?? hojeISO()),
+          }
+        : {}),
+    });
+  };
+
+  /** Escolher o cartão do cadastro traz o vencimento da fatura junto. */
+  const trocarCartao = (nome: string) => {
+    const casado = cartoes.find(
+      (cartao) => cartao.nome.trim().toLowerCase() === nome.trim().toLowerCase(),
+    );
+    const emissao = rascunho.emissao ?? hojeISO();
+
+    alterar({
+      cartaoId: casado?.id ?? null,
+      cartaoNome: nome,
+      ...(casado ? { vencimento: vencimentoDaFatura(casado, emissao) } : {}),
+    });
+  };
+
+  const trocarEmissao = (valor: string) => {
+    const emissao = valor || null;
+    const cartao = cartoes.find((item) => item.id === rascunho.cartaoId);
+
+    alterar({
+      emissao,
+      ...(ehFatura && cartao && emissao
+        ? { vencimento: vencimentoDaFatura(cartao, emissao) }
         : {}),
     });
   };
@@ -123,21 +170,31 @@ export function FormularioConta({ registro, fornecedores, aoFechar }: PropsFormu
         )}
       </Campo>
 
-      <Campo rotulo="Fornecedor">
+      <Campo rotulo={ehFatura ? 'Cartão' : 'Fornecedor'}>
         {(id) => (
           <>
             <EntradaTexto
               id={id}
               valor={rascunho.fornecedorNome}
-              placeholder="Distribuidora Central"
-              list="lista-fornecedores"
-              aoMudar={(valor) => atualizar('fornecedorNome', valor)}
+              placeholder={ehFatura ? 'Cartão da loja' : 'Distribuidora Central'}
+              list={ehFatura ? 'lista-cartoes' : 'lista-fornecedores'}
+              aoMudar={(valor) =>
+                ehFatura ? trocarCartao(valor) : atualizar('fornecedorNome', valor)
+              }
             />
-            <datalist id="lista-fornecedores">
-              {fornecedores.map((fornecedor) => (
-                <option key={fornecedor.id} value={fornecedor.nome} />
-              ))}
-            </datalist>
+            {ehFatura ? (
+              <datalist id="lista-cartoes">
+                {cartoes.map((cartao) => (
+                  <option key={cartao.id} value={cartao.nome} />
+                ))}
+              </datalist>
+            ) : (
+              <datalist id="lista-fornecedores">
+                {fornecedores.map((fornecedor) => (
+                  <option key={fornecedor.id} value={fornecedor.nome} />
+                ))}
+              </datalist>
+            )}
           </>
         )}
       </Campo>
@@ -164,16 +221,23 @@ export function FormularioConta({ registro, fornecedores, aoFechar }: PropsFormu
       </Campo>
 
       <Dupla>
-        <Campo rotulo="Emissão" dica="Data do pedido">
+        <Campo rotulo="Emissão" dica={ehFatura ? 'Data da compra' : 'Data do pedido'}>
           {(id) => (
             <EntradaData
               id={id}
               valor={rascunho.emissao ?? ''}
-              aoMudar={(valor) => atualizar('emissao', valor || null)}
+              aoMudar={trocarEmissao}
             />
           )}
         </Campo>
-        <Campo rotulo={ehCheque ? 'Bom para' : 'Vencimento'}>
+        <Campo
+          rotulo={ehCheque ? 'Bom para' : 'Vencimento'}
+          dica={
+            ehFatura && rascunho.cartaoNome
+              ? `Pelo fechamento do ${rascunho.cartaoNome}`
+              : undefined
+          }
+        >
           {(id) => (
             <EntradaData
               id={id}

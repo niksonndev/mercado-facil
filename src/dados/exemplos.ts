@@ -1,6 +1,7 @@
 import { dataPrevistaCredito, vencimentoPadraoFolha } from '../dominio/calculos';
 import { adicionarDias, adicionarMeses, hojeISO, mesAtual } from '../dominio/datas';
 import type {
+  Cartao,
   Conta,
   CustoOperacional,
   DataISO,
@@ -86,6 +87,12 @@ export async function carregarExemplos(hoje: DataISO = hojeISO()): Promise<void>
   const caixa1 = pontos[0]?.id ?? null;
   const caixa2 = pontos[1]?.id ?? null;
   const responsavel = funcionarios[0] ?? null;
+
+  // Cartão da empresa: a fatura fecha dia 20 e vence dia 28, então o melhor dia
+  // de compra é 21 (a compra entra na fatura seguinte e ganha prazo).
+  const cartoes: Cartao[] = [
+    { nome: 'Cartão da loja', diaFechamento: 20, diaVencimento: 28 },
+  ].map((base) => ({ ...base, id: id(), ativo: true, criadoEm: agora }));
 
   // Fechamentos do dia 1 até ontem: hoje continua em aberto.
   const fechamentos: FechamentoCaixa[] = [];
@@ -173,6 +180,8 @@ export async function carregarExemplos(hoje: DataISO = hojeISO()): Promise<void>
       vencimento: adicionarDias(hoje, -4),
       chequeNumero: '',
       chequeBanco: '',
+      cartaoId: null,
+      cartaoNome: '',
       pagoEm: null,
       valorPago: null,
       formaPagamento: null,
@@ -188,6 +197,8 @@ export async function carregarExemplos(hoje: DataISO = hojeISO()): Promise<void>
       vencimento: adicionarDias(hoje, 6),
       chequeNumero: '',
       chequeBanco: '',
+      cartaoId: null,
+      cartaoNome: '',
       pagoEm: null,
       valorPago: null,
       formaPagamento: null,
@@ -203,6 +214,8 @@ export async function carregarExemplos(hoje: DataISO = hojeISO()): Promise<void>
       vencimento: `${anterior}-28`,
       chequeNumero: '',
       chequeBanco: '',
+      cartaoId: null,
+      cartaoNome: '',
       pagoEm: `${anterior}-28`,
       valorPago: reais(1289.4),
       formaPagamento: 'pix',
@@ -218,6 +231,8 @@ export async function carregarExemplos(hoje: DataISO = hojeISO()): Promise<void>
       vencimento: adicionarDias(hoje, 11),
       chequeNumero: '000431',
       chequeBanco: 'Banco do Brasil',
+      cartaoId: null,
+      cartaoNome: '',
       pagoEm: null,
       valorPago: null,
       formaPagamento: null,
@@ -233,6 +248,8 @@ export async function carregarExemplos(hoje: DataISO = hojeISO()): Promise<void>
       vencimento: adicionarDias(hoje, -2),
       chequeNumero: '000388',
       chequeBanco: 'Caixa Econômica',
+      cartaoId: null,
+      cartaoNome: '',
       pagoEm: null,
       valorPago: null,
       formaPagamento: null,
@@ -248,6 +265,8 @@ export async function carregarExemplos(hoje: DataISO = hojeISO()): Promise<void>
       vencimento: adicionarDias(hoje, -3),
       chequeNumero: '',
       chequeBanco: '',
+      cartaoId: null,
+      cartaoNome: '',
       pagoEm: adicionarDias(hoje, -3),
       valorPago: reais(760.3),
       formaPagamento: 'dinheiro',
@@ -263,10 +282,29 @@ export async function carregarExemplos(hoje: DataISO = hojeISO()): Promise<void>
       vencimento: adicionarDias(hoje, -1),
       chequeNumero: '',
       chequeBanco: '',
+      cartaoId: null,
+      cartaoNome: '',
       pagoEm: adicionarDias(hoje, -1),
       valorPago: reais(1120),
       formaPagamento: 'debito',
       observacao: '',
+    },
+    {
+      tipo: 'fatura',
+      fornecedorId: null,
+      fornecedorNome: 'Cartão da loja',
+      descricao: 'Fatura do cartão: embalagens e material de limpeza',
+      valor: reais(1840.6),
+      emissao: adicionarDias(hoje, -8),
+      vencimento: adicionarDias(hoje, 12),
+      chequeNumero: '',
+      chequeBanco: '',
+      cartaoId: cartoes[0]?.id ?? null,
+      cartaoNome: 'Cartão da loja',
+      pagoEm: null,
+      valorPago: null,
+      formaPagamento: null,
+      observacao: 'Conferir os lançamentos do app do cartão',
     },
   ];
 
@@ -430,6 +468,7 @@ export async function carregarExemplos(hoje: DataISO = hojeISO()): Promise<void>
     await db.funcionarios.bulkPut(funcionarios);
     await db.fechamentos.bulkPut(fechamentos);
     await db.contas.bulkPut(contas);
+    await db.cartoes.bulkPut(cartoes);
     await db.despesas.bulkPut(despesas);
     await db.custos.bulkPut(custos);
     await db.folha.bulkPut(folha);

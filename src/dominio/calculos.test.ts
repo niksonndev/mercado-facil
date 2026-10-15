@@ -9,6 +9,7 @@ import {
   dre,
   fechamentosPorDia,
   indexarPorFechamento,
+  melhorDiaDeCompra,
   pendencias,
   resumoDoMes,
   resumoFechamento,
@@ -18,10 +19,12 @@ import {
   saidasEmDinheiro,
   situacaoDoCompromisso,
   vendasPorDia,
+  vencimentoDaFatura,
   vencimentoPadraoFolha,
 } from './calculos';
 import type {
   Acervo,
+  Cartao,
   Conta,
   CustoOperacional,
   Despesa,
@@ -65,6 +68,8 @@ function conta(campos: Partial<Conta> & { vencimento: string; valor: number }): 
     emissao: null,
     chequeNumero: '',
     chequeBanco: '',
+    cartaoId: null,
+    cartaoNome: '',
     pagoEm: null,
     valorPago: null,
     formaPagamento: null,
@@ -530,6 +535,46 @@ describe('pontos de venda', () => {
     expect(rotuloPonto([caixa1], 'p1')).toBe('Caixa 1');
     // Ponto apagado depois do fechamento: o histórico não pode virar "undefined".
     expect(rotuloPonto([caixa1], 'p9')).toBe('Caixa removido');
+  });
+});
+
+describe('fatura do cartão da empresa', () => {
+  const cartao = (campos: Partial<Cartao> = {}): Cartao => ({
+    id: 'k1',
+    nome: 'Cartão da loja',
+    diaFechamento: 20,
+    diaVencimento: 28,
+    ativo: true,
+    criadoEm: '',
+    ...campos,
+  });
+
+  it('joga a compra feita até o fechamento para a fatura do mês', () => {
+    expect(vencimentoDaFatura(cartao(), '2026-10-05')).toBe('2026-10-28');
+    // No próprio dia do fechamento a compra ainda entra nesta fatura.
+    expect(vencimentoDaFatura(cartao(), '2026-10-20')).toBe('2026-10-28');
+  });
+
+  it('empurra a compra depois do fechamento para a fatura seguinte', () => {
+    expect(vencimentoDaFatura(cartao(), '2026-10-21')).toBe('2026-11-28');
+  });
+
+  it('vence no mês seguinte quando o vencimento vem antes do fechamento', () => {
+    const doBanco = cartao({ diaFechamento: 25, diaVencimento: 5 });
+
+    expect(vencimentoDaFatura(doBanco, '2026-10-10')).toBe('2026-11-05');
+  });
+
+  it('não estoura o mês quando o dia combinado não existe nele', () => {
+    const trintaEUm = cartao({ diaFechamento: 31, diaVencimento: 31 });
+
+    expect(vencimentoDaFatura(trintaEUm, '2026-02-10')).toBe('2026-02-28');
+  });
+
+  it('aponta o melhor dia de compra como o dia seguinte ao fechamento', () => {
+    expect(melhorDiaDeCompra(cartao())).toBe(21);
+    // Cartão que fecha no fim do mês: o melhor dia volta para o começo.
+    expect(melhorDiaDeCompra(cartao({ diaFechamento: 28 }))).toBe(1);
   });
 });
 

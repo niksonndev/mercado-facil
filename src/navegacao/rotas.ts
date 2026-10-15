@@ -61,6 +61,13 @@ export const ROTAS: Rota[] = [
     grupo: 'estrutura',
   },
   {
+    caminho: 'banco',
+    titulo: 'Banco e cartões',
+    curto: 'Banco',
+    icone: 'banco',
+    grupo: 'estrutura',
+  },
+  {
     caminho: 'fornecedores',
     titulo: 'Fornecedores',
     curto: 'Fornecedores',

@@ -4,7 +4,7 @@ import { FORMAS_PAGAMENTO, TIPOS_CONTA, corTipoConta, rotuloTipoConta } from '..
 import { competenciaDe, formatarData, hojeISO, rotuloPrazo } from '../dominio/datas';
 import { formatarDinheiro, somarCentavos } from '../dominio/dinheiro';
 import type { Conta } from '../dominio/tipos';
-import { useAcervo, useFornecedores } from '../dados/hooks';
+import { useAcervo, useCartoes, useFornecedores } from '../dados/hooks';
 import {
   contaVazia,
   novaConta,
@@ -29,6 +29,7 @@ const ROTULO_SITUACAO: Record<string, { texto: string; cor: string }> = {
 export function Contas() {
   const acervo = useAcervo();
   const fornecedores = useFornecedores() ?? [];
+  const cartoes = useCartoes() ?? [];
   const [filtro, definirFiltro] = useState<Filtro>('abertas');
   const [tipo, definirTipo] = useState<'todas' | Conta['tipo']>('todas');
   const [editando, definirEditando] = useState<Conta | null>(null);
@@ -211,6 +212,7 @@ export function Contas() {
           key={editando.id}
           registro={editando}
           fornecedores={fornecedores}
+          cartoes={cartoes}
           aoFechar={() => definirEditando(null)}
         />
       )}
