@@ -2,7 +2,9 @@ import { dataPrevistaCredito, vencimentoPadraoFolha } from '../dominio/calculos'
 import { adicionarDias, adicionarMeses, hojeISO, mesAtual } from '../dominio/datas';
 import type {
   Cartao,
+  ConferenciaSaldo,
   Conta,
+  ContaBancaria,
   CustoOperacional,
   DataISO,
   Despesa,
@@ -15,6 +17,7 @@ import type {
   PrazoCredito,
 } from '../dominio/tipos';
 import { db } from './db';
+import { chaveConferencia } from './repositorio';
 
 /**
  * Gerador determinístico (LCG): o mesmo exemplo em qualquer máquina, para a
@@ -93,6 +96,35 @@ export async function carregarExemplos(hoje: DataISO = hojeISO()): Promise<void>
   const cartoes: Cartao[] = [
     { nome: 'Cartão da loja', diaFechamento: 20, diaVencimento: 28 },
   ].map((base) => ({ ...base, id: id(), ativo: true, criadoEm: agora }));
+
+  // Uma conta bancária, com o saldo do começo do mês passado: é o ponto de
+  // partida da conferência, e a conferência do mês passado já está feita.
+  const contaDaLoja: ContaBancaria = {
+    id: id(),
+    nome: 'Conta da loja',
+    banco: 'Banco do Brasil',
+    agencia: '1234-5',
+    numero: '00012345-6',
+    saldoInicial: reais(6500),
+    dataSaldoInicial: `${anterior}-01`,
+    ativo: true,
+    observacao: '',
+    criadoEm: agora,
+  };
+
+  const contasBancarias: ContaBancaria[] = [contaDaLoja];
+
+  const conferencias: ConferenciaSaldo[] = [
+    {
+      id: chaveConferencia(contaDaLoja.id, anterior),
+      contaBancariaId: contaDaLoja.id,
+      competencia: anterior,
+      saldoExtrato: reais(7420.35),
+      data: `${anterior}-28`,
+      observacao: 'Conferido no app do banco',
+      atualizadoEm: agora,
+    },
+  ];
 
   // Fechamentos do dia 1 até ontem: hoje continua em aberto.
   const fechamentos: FechamentoCaixa[] = [];
@@ -469,6 +501,8 @@ export async function carregarExemplos(hoje: DataISO = hojeISO()): Promise<void>
     await db.fechamentos.bulkPut(fechamentos);
     await db.contas.bulkPut(contas);
     await db.cartoes.bulkPut(cartoes);
+    await db.contasBancarias.bulkPut(contasBancarias);
+    await db.conferencias.bulkPut(conferencias);
     await db.despesas.bulkPut(despesas);
     await db.custos.bulkPut(custos);
     await db.folha.bulkPut(folha);

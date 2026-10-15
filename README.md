@@ -19,7 +19,7 @@ primeira visita.
 | **Despesas** | Retirada de caixa e pagamentos diversos, com a marcação de "saiu do dinheiro da gaveta" que entra na conferência do caixa. |
 | **Custos** | Aluguel, energia, água, internet, contabilidade e afins, por competência, com repetição automática dos recorrentes para o mês seguinte. |
 | **Folha** | Cadastro de funcionários e folha mês a mês, separando o líquido do funcionário do custo da empresa (FGTS e encargos). |
-| **Banco e cartões** | Cadastro dos cartões da empresa (dia de fechamento e de vencimento) para o app calcular a fatura e apontar o melhor dia de compra. |
+| **Banco e cartões** | Cadastro dos cartões da empresa (dia de fechamento e de vencimento) para o app calcular a fatura e apontar o melhor dia de compra. Cadastro da conta bancária e a conferência do mês: o saldo que o app espera contra o saldo que o extrato mostrou. |
 | **Fornecedores** | Cadastro simples, com o total em aberto de cada um. |
 | **Relatórios** | Resultado do mês, vendas por dia, de onde veio e para onde foi o dinheiro, o que continua em aberto e a agenda do crédito das máquinas (o que ainda vai cair, o que atrasou e o que já caiu). |
 | **DRE do mês** | Lucro ou prejuízo de verdade: vendas, taxas de cartão e impostos, custo da mercadoria vendida, custos, folha e retiradas, com margens e opção de imprimir. |
@@ -78,6 +78,15 @@ pnpm preview      # serve o build: aqui o service worker é exercitado de verdad
   prevista é calculada a partir da data do fechamento e do prazo.
 - **Formas de pagamento** viram cores em `src/dominio/categorias.ts`; etiqueta,
   legenda e relatório leem de lá, então mudar um rótulo é mexer em um lugar só.
+- **A conferência do extrato é uma aproximação declarada, não um extrato.** O app
+  não pergunta, em cada lançamento, de qual conta o dinheiro saiu (quem paga no
+  balcão não sabe disso na hora). Então ele atribui à conta o que é dela por
+  natureza (PIX, débito e o crédito das máquinas que já caiu), tira o que não é
+  dinheiro vivo, desconta a folha sempre, e compara com o saldo que a pessoa leu
+  no banco. Quando não bate, a diferença é a informação útil. Com mais de uma
+  conta cadastrada o movimento é somado e a tela avisa que a conferência não
+  separa por conta: separar exigiria marcar cada pagamento, o que é trabalho de
+  ERP e não de mercadinho.
 
 ## Leitura de comprovante por IA (ainda não ligada)
 

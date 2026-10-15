@@ -4,7 +4,9 @@ import { PRAZO_CREDITO_PADRAO } from '../dominio/categorias';
 import type {
   Cartao,
   Competencia,
+  ConferenciaSaldo,
   Conta,
+  ContaBancaria,
   CustoOperacional,
   DataISO,
   Despesa,
@@ -85,6 +87,43 @@ export function novoCartao(dados: Nascimento<Cartao>): Cartao {
 
 export const salvarCartao = (registro: Cartao) => db.cartoes.put(registro);
 export const removerCartao = (id: Id) => db.cartoes.delete(id);
+
+/** Chave da conferência: uma por conta e por mês. */
+export const chaveConferencia = (contaBancariaId: Id, competencia: Competencia): string =>
+  `${contaBancariaId}:${competencia}`;
+
+/** Conta bancária em branco, já com o saldo de hoje para o dono só corrigir. */
+export function contaBancariaVazia(): ContaBancaria {
+  return {
+    id: gerarId(),
+    nome: '',
+    banco: '',
+    agencia: '',
+    numero: '',
+    saldoInicial: 0,
+    dataSaldoInicial: hojeISO(),
+    ativo: true,
+    observacao: '',
+    criadoEm: agora(),
+  };
+}
+
+export const salvarContaBancaria = (registro: ContaBancaria) =>
+  db.contasBancarias.put(registro);
+export const removerContaBancaria = (id: Id) => db.contasBancarias.delete(id);
+
+/** Grava o saldo do extrato do mês; informar de novo corrige o mesmo registro. */
+export function salvarConferencia(
+  dados: Omit<ConferenciaSaldo, 'id' | 'atualizadoEm'>,
+): Promise<string> {
+  return db.conferencias.put({
+    ...dados,
+    id: chaveConferencia(dados.contaBancariaId, dados.competencia),
+    atualizadoEm: agora(),
+  });
+}
+
+export const removerConferencia = (id: string) => db.conferencias.delete(id);
 
 export function novoFornecedor(dados: Nascimento<Fornecedor>): Fornecedor {
   return { ...dados, id: gerarId(), criadoEm: agora() };

@@ -10,6 +10,7 @@ import {
   fechamentosPorDia,
   indexarPorFechamento,
   melhorDiaDeCompra,
+  movimentoEmConta,
   pendencias,
   resumoDoMes,
   resumoFechamento,
@@ -17,6 +18,7 @@ import {
   resumoRecebiveis,
   rotuloPonto,
   saidasEmDinheiro,
+  saldoEsperado,
   situacaoDoCompromisso,
   vendasPorDia,
   vencimentoDaFatura,
@@ -26,6 +28,7 @@ import type {
   Acervo,
   Cartao,
   Conta,
+  ContaBancaria,
   CustoOperacional,
   Despesa,
   FechamentoCaixa,
@@ -535,6 +538,86 @@ describe('pontos de venda', () => {
     expect(rotuloPonto([caixa1], 'p1')).toBe('Caixa 1');
     // Ponto apagado depois do fechamento: o histórico não pode virar "undefined".
     expect(rotuloPonto([caixa1], 'p9')).toBe('Caixa removido');
+  });
+});
+
+describe('conferência do extrato da conta bancária', () => {
+  const CONTA: ContaBancaria = {
+    id: 'b1',
+    nome: 'Conta da loja',
+    banco: 'Banco do Brasil',
+    agencia: '1234-5',
+    numero: '00012345-6',
+    saldoInicial: 500000,
+    dataSaldoInicial: '2026-10-01',
+    ativo: true,
+    observacao: '',
+    criadoEm: '',
+  };
+
+  const ACERVO_BANCO: Acervo = {
+    fechamentos: [
+      fechamento({
+        data: '2026-10-10',
+        dinheiro: 100000,
+        pix: 80000,
+        debito: 30000,
+        credito: 40000,
+      }),
+    ],
+    contas: [
+      // Pago no PIX: saiu da conta.
+      conta({
+        vencimento: '2026-10-12',
+        valor: 50000,
+        pagoEm: '2026-10-12',
+        valorPago: 50000,
+        formaPagamento: 'pix',
+      }),
+      // Pago em dinheiro do balcão: não passou pela conta.
+      conta({
+        vencimento: '2026-10-13',
+        valor: 20000,
+        pagoEm: '2026-10-13',
+        valorPago: 20000,
+        formaPagamento: 'dinheiro',
+      }),
+    ],
+    despesas: [
+      despesa({ data: '2026-10-14', valor: 3000, formaPagamento: 'debito' }),
+      despesa({ data: '2026-10-14', valor: 7000, formaPagamento: 'dinheiro' }),
+    ],
+    custos: [
+      custo({
+        vencimento: '2026-10-05',
+        valorPrevisto: 40000,
+        categoria: 'energia',
+        pagoEm: '2026-10-05',
+        valorPago: 40000,
+        formaPagamento: 'pix',
+      }),
+    ],
+    folha: [folhaItem({ competencia: '2026-10', pagoEm: '2026-10-05', valorPago: 216000 })],
+    indicadores: [],
+  };
+
+  it('só conta o que passa pela conta, não o dinheiro da gaveta', () => {
+    const movimento = movimentoEmConta('2026-10', ACERVO_BANCO, HOJE);
+
+    // Entra o PIX e o débito das vendas; a venda em dinheiro fica na gaveta.
+    expect(movimento.entradas).toBe(110000);
+    // Sai o boleto pago no PIX, a conta de energia, a folha e a despesa no débito.
+    expect(movimento.saidas).toBe(50000 + 40000 + 216000 + 3000);
+    expect(movimento.movimento).toBe(-199000);
+  });
+
+  it('soma o movimento do mês ao saldo informado no extrato', () => {
+    expect(saldoEsperado('2026-10', ACERVO_BANCO, CONTA, HOJE)).toBe(301000);
+  });
+
+  it('não projeta para trás da data do saldo informado', () => {
+    // O saldo foi lido em 01/10: setembro já está dentro dele.
+    expect(saldoEsperado('2026-09', ACERVO_BANCO, CONTA, HOJE)).toBe(500000);
   });
 });
 

@@ -163,6 +163,47 @@ export interface Despesa {
   criadoEm: string;
 }
 
+/**
+ * Conta bancária da loja.
+ *
+ * Serve para uma coisa só: o lojista olhar o extrato e saber se o que o app
+ * mostra bate. O saldo não é vigiado sozinho (seria preciso dizer, em cada
+ * pagamento, de qual conta o dinheiro saiu), então o app soma o movimento que
+ * passa por PIX, débito, cartão e pagamentos, e a pessoa confere contra o
+ * extrato uma vez por mês.
+ */
+export interface ContaBancaria {
+  id: Id;
+  /** Como o dono chama a conta: "Conta da loja", "Conta do dono". */
+  nome: string;
+  banco: string;
+  agencia: string;
+  numero: string;
+  /** Saldo do extrato no dia informado; é o ponto de partida da conferência. */
+  saldoInicial: Centavos;
+  dataSaldoInicial: DataISO;
+  ativo: boolean;
+  observacao: string;
+  criadoEm: string;
+}
+
+/**
+ * Saldo do extrato informado no mês.
+ *
+ * A chave é conta + competência: uma conferência por mês, e informar de novo
+ * corrige a anterior em vez de criar uma segunda.
+ */
+export interface ConferenciaSaldo {
+  id: string;
+  contaBancariaId: Id;
+  competencia: Competencia;
+  saldoExtrato: Centavos;
+  /** Dia do extrato consultado. */
+  data: DataISO | null;
+  observacao: string;
+  atualizadoEm: string;
+}
+
 /** Custo fixo/estrutural: aluguel, energia, água, contabilidade... */
 export type CategoriaCusto =
   | 'aluguel'

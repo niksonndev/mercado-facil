@@ -1,7 +1,9 @@
 import Dexie, { type Table } from 'dexie';
 import type {
   Cartao,
+  ConferenciaSaldo,
   Conta,
+  ContaBancaria,
   CustoOperacional,
   Despesa,
   FechamentoCaixa,
@@ -29,6 +31,9 @@ export class BancoMercadoFacil extends Dexie {
   contas!: Table<Conta, string>;
   /** Cartões da empresa: a fatura e o melhor dia de compra saem daqui. */
   cartoes!: Table<Cartao, string>;
+  /** Conta bancária da loja e o saldo do extrato conferido mês a mês. */
+  contasBancarias!: Table<ContaBancaria, string>;
+  conferencias!: Table<ConferenciaSaldo, string>;
   despesas!: Table<Despesa, string>;
   custos!: Table<CustoOperacional, string>;
   funcionarios!: Table<Funcionario, string>;
@@ -68,6 +73,13 @@ export class BancoMercadoFacil extends Dexie {
     this.version(4).stores({
       cartoes: 'id, nome, ativo',
     });
+
+    // v5: conta bancária e o saldo do extrato informado no mês, que é a única
+    // forma de conferir o que o app mostra sem marcar cada pagamento.
+    this.version(5).stores({
+      contasBancarias: 'id, nome, ativo',
+      conferencias: 'id, contaBancariaId, competencia',
+    });
   }
 }
 
@@ -80,6 +92,8 @@ export const TABELAS = [
   'fornecedores',
   'contas',
   'cartoes',
+  'contasBancarias',
+  'conferencias',
   'despesas',
   'custos',
   'funcionarios',

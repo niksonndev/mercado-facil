@@ -14,6 +14,7 @@ import type {
   Cartao,
   Centavos,
   Competencia,
+  ContaBancaria,
   DataISO,
   Despesa,
   FechamentoCaixa,
@@ -600,6 +601,129 @@ export function resumoRecebiveis(recebiveis: Recebivel[]): ResumoRecebiveis {
     ),
     abertos,
   };
+}
+
+export interface ResumoContaBancaria {
+  entradas: Centavos;
+  saidas: Centavos;
+  /** O que o saldo da conta deveria ter mudado no mês. */
+  movimento: Centavos;
+  /** De onde veio e para onde foi, para a conferência ter o que mostrar. */
+  detalhe: {
+    formularios: Centavos;
+    pix: Centavos;
+    debito: Centavos;
+    cartoes: Centavos;
+    fornecedores: Centavos;
+    custos: Centavos;
+    folha: Centavos;
+    despesas: Centavos;
+  };
+}
+
+/** Pagamento que não saiu da gaveta: em tese passou pela conta. */
+const saiuDaConta = (forma: FormaPagamento | null): boolean =>
+  forma !== null && forma !== 'dinheiro';
+
+/**
+ * O que passou pela conta bancária no mês.
+ *
+ * O app não pergunta, em cada lançamento, de qual conta o dinheiro saiu: quem
+ * paga no balcão não sabe disso na hora. Então a conta recebe o que é dela por
+ * natureza (PIX, débito e o crédito das máquinas) e paga o que não é dinheiro
+ * vivo. A folha entra sempre, porque salário não se paga em dinheiro da gaveta.
+ */
+export function movimentoEmConta(
+  competencia: Competencia,
+  acervo: Acervo,
+  hoje: DataISO = hojeISO(),
+): ResumoContaBancaria {
+  const resumo = resumoDoMes(competencia, acervo, hoje);
+
+  const fornecedores = somarCentavos(
+    acervo.contas
+      .filter(
+        (conta) =>
+          conta.pagoEm &&
+          competenciaDe(conta.pagoEm) === competencia &&
+          saiuDaConta(conta.formaPagamento),
+      )
+      .map((conta) => conta.valorPago ?? conta.valor),
+  );
+
+  const custos = somarCentavos(
+    acervo.custos
+      .filter(
+        (custo) =>
+          custo.pagoEm &&
+          competenciaDe(custo.pagoEm) === competencia &&
+          saiuDaConta(custo.formaPagamento),
+      )
+      .map((custo) => custo.valorPago ?? custo.valorPrevisto),
+  );
+
+  const despesas = somarCentavos(
+    acervo.despesas
+      .filter(
+        (despesa) =>
+          competenciaDe(despesa.data) === competencia &&
+          saiuDaConta(despesa.formaPagamento),
+      )
+      .map((despesa) => despesa.valor),
+  );
+
+  const folha = resumo.saidas.folha;
+
+  const cartoes = somarCentavos(
+    agendaRecebiveis(acervo, hoje)
+      .filter(
+        (item) => item.recebidoEm && competenciaDe(item.recebidoEm) === competencia,
+      )
+      .map((item) => item.valorRecebido ?? item.valor),
+  );
+
+  const formularios = resumo.porForma.pix + resumo.porForma.debito + cartoes;
+  const saidas = fornecedores + custos + folha + despesas;
+
+  return {
+    entradas: formularios,
+    saidas,
+    movimento: formularios - saidas,
+    detalhe: {
+      formularios,
+      pix: resumo.porForma.pix,
+      debito: resumo.porForma.debito,
+      cartoes,
+      fornecedores,
+      custos,
+      folha,
+      despesas,
+    },
+  };
+}
+
+/**
+ * Saldo que o app espera encontrar no extrato ao fim da competência.
+ *
+ * Soma o saldo informado na data de partida com o movimento de cada mês até
+ * aqui. Cinco anos é o teto do laço: data de partida no futuro ou errada não
+ * pode travar a tela.
+ */
+export function saldoEsperado(
+  competencia: Competencia,
+  acervo: Acervo,
+  conta: ContaBancaria,
+  hoje: DataISO = hojeISO(),
+): Centavos {
+  let saldo = conta.saldoInicial;
+  let mes = competenciaDe(conta.dataSaldoInicial);
+
+  for (let passo = 0; passo < 60 && mes <= competencia; passo += 1) {
+    saldo += movimentoEmConta(mes, acervo, hoje).movimento;
+    mes = adicionarMeses(mes, 1);
+  }
+
+  return saldo;
 }
 
 /** Total da folha (custo para a empresa) em uma competência. */
