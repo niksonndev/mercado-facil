@@ -62,8 +62,13 @@ export function App() {
     <div className="app">
       <Topo rota={rota} tema={tema} aoAlternarTema={alternar} />
       <Menu rota={rota} />
-      {/* key refaz a tela ao trocar de seção, zerando formulário e filtros. */}
-      <main className="tela" key={rota.caminho}>
+      {/*
+        A chave refaz a tela ao trocar de seção, zerando formulário e filtros.
+        O `aba` entra na chave de propósito: o atalho de lançamento abre a folha
+        pelo endereço (`#/caixa/novo`), então o botão voltar do celular precisa
+        voltar para `#/caixa` e encontrar a tela fechada.
+      */}
+      <main className="tela" key={`${rota.caminho}/${endereco.aba}`}>
         <Tela caminho={rota.caminho} />
       </main>
       <Abas rota={rota} />

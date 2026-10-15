@@ -32,7 +32,7 @@ import { BotaoExcluir, GrupoFiltros, LinhaLista } from '../componentes/lista';
 import { FormularioFechamento } from '../componentes/FormularioFechamento';
 import { FormularioPonto } from '../componentes/FormularioPonto';
 import { SeletorMes } from '../componentes/SeletorMes';
-import { abaAtual } from '../navegacao/rotas';
+import { abaAtual, irPara } from '../navegacao/rotas';
 
 /** O filtro "caixa único" pega os fechamentos de quem não separa ponto de venda. */
 const SEM_PONTO = 'sem-ponto';
@@ -42,7 +42,7 @@ export function Caixa() {
   const pontos = usePontos() ?? [];
   const funcionarios = useFuncionarios() ?? [];
   const [editando, definirEditando] = useState<FechamentoCaixa | null>(null);
-  const [abrirNovo] = useState(() => abaAtual() === 'novo');
+  const [abrirNovo, definirAbrirNovo] = useState(() => abaAtual() === 'novo');
   const [novoAberto, definirNovoAberto] = useState(true);
   const [editandoPonto, definirEditandoPonto] = useState<PontoDeVenda | null>(null);
   const [competencia, definirCompetencia] = useState<Competencia>(mesAtual);
@@ -50,15 +50,28 @@ export function Caixa() {
   const hoje = hojeISO();
 
   /**
-   * Quem chega pelo atalho de lançamento quer o fechamento de hoje já aberto.
-   * O ponto de venda vem do cadastro, que chega depois do primeiro render.
+   * Quem chega pelo atalho de lançamento quer o apurado de hoje já aberto.
+   *
+   * A intenção do endereço é consumida uma vez só: sem isso, fechar a folha
+   * (que zera `editando`) faria o efeito abrir de novo, e o botão voltar
+   * parecia não funcionar. O ponto de venda vem do cadastro, então espera o
+   * acervo chegar do banco antes de montar o lançamento.
    */
   useEffect(() => {
-    if (!abrirNovo || editando) return;
-    definirEditando(
-      novoFechamento(fechamentoVazio(hoje, pontos.find((ponto) => ponto.ativo)?.id ?? null)),
-    );
-  }, [abrirNovo, editando, hoje, pontos]);
+    if (!abrirNovo || editando || !acervo) return;
+    definirAbrirNovo(false);
+
+    // Se o dia já tem apurado, o atalho abre ele para corrigir; senão, começa um.
+    const pontoId = pontos.find((ponto) => ponto.ativo)?.id ?? null;
+    const existente =
+      acervo.fechamentos.find(
+        (fechamento) =>
+          fechamento.data === hoje && (fechamento.pontoId ?? null) === pontoId,
+      ) ?? null;
+
+    definirNovoAberto(!existente);
+    definirEditando(existente ?? novoFechamento(fechamentoVazio(hoje, pontoId)));
+  }, [abrirNovo, editando, acervo, hoje, pontos]);
 
   if (!acervo) return <Vazio titulo="Carregando…" />;
 
@@ -138,7 +151,7 @@ export function Caixa() {
         <Botao
           variante="principal"
           icone="mais-circulo"
-          onClick={() => abrirDia(hoje, pontoDoDia)}
+          onClick={() => irPara('caixa/novo')}
         >
           {fechamentoDeHoje ? 'Corrigir o apurado de hoje' : 'Lançar o apurado de hoje'}
         </Botao>

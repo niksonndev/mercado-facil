@@ -23,10 +23,8 @@ import {
 } from '../dominio/datas';
 import { formatarDinheiro, somarCentavos } from '../dominio/dinheiro';
 import type { Centavos, FechamentoCaixa, Id } from '../dominio/tipos';
-import { useAcervo, useFuncionarios, usePontos } from '../dados/hooks';
+import { useAcervo, usePontos } from '../dados/hooks';
 import { pagarCompromisso } from '../dados/pagamentos';
-import { fechamentoVazio, novoFechamento } from '../dados/repositorio';
-import { FormularioFechamento } from '../componentes/FormularioFechamento';
 import { FormularioRecebimento } from '../componentes/FormularioRecebimento';
 import { GavetaPagamento, type Pagamento } from '../componentes/GavetaPagamento';
 import {
@@ -52,12 +50,9 @@ const SITUACAO: Record<string, { rotulo: string; cor: string }> = {
 export function Painel() {
   const acervo = useAcervo();
   const pontos = usePontos() ?? [];
-  const funcionarios = useFuncionarios() ?? [];
-  const [editando, definirEditando] = useState<FechamentoCaixa | null>(null);
   const [recebendo, definirRecebendo] = useState<FechamentoCaixa | null>(null);
   const [pagando, definirPagando] = useState<CompromissoPendente | null>(null);
   const [verValores, definirVerValores] = useState(true);
-  const [novoAberto, definirNovoAberto] = useState(false);
 
   /** O olho do topo esconde os números: quem mostra a tela para outra pessoa agradece. */
   const mostrar = (valor: Centavos) => (verValores ? formatarDinheiro(valor) : 'R$ ••••');
@@ -72,13 +67,6 @@ export function Painel() {
   const fechamentosHoje = fechamentosPorDia(acervo.fechamentos).get(hoje) ?? [];
   const ativos = pontos.filter((ponto) => ponto.ativo);
   const compromissos = [...acervo.contas.map((c) => c), ...acervo.custos, ...acervo.folha];
-
-  /** Abre o fechamento do caixa informado, ou começa um novo nele. */
-  const abrirCaixa = (pontoId: Id | null) => {
-    const existente = fechamentosHoje.find((fechamento) => fechamento.pontoId === pontoId);
-    definirNovoAberto(!existente);
-    definirEditando(existente ?? novoFechamento(fechamentoVazio(hoje, pontoId)));
-  };
 
   /** Caixa ativo que ainda não fechou hoje: é o trabalho que falta. */
   const caixaAbertoHoje =
@@ -153,7 +141,7 @@ export function Painel() {
         acao={
           <>
             {caixaAbertoHoje && (
-              <Botao pequeno onClick={() => abrirCaixa(caixaAbertoHoje.id)}>
+              <Botao pequeno onClick={() => irPara('caixa/novo')}>
                 {fechamentosHoje.length === 0
                   ? 'Lançar o apurado'
                   : `Lançar ${caixaAbertoHoje.nome}`}
@@ -163,13 +151,13 @@ export function Painel() {
               <Botao
                 pequeno
                 variante={caixaAbertoHoje ? 'fantasma' : 'principal'}
-                onClick={() => abrirCaixa(fechamentosHoje[0]?.pontoId ?? null)}
+                onClick={() => irPara('caixa/novo')}
               >
                 Corrigir
               </Botao>
             )}
             {fechamentosHoje.length === 0 && ativos.length === 0 && (
-              <Botao pequeno variante="principal" onClick={() => abrirCaixa(null)}>
+              <Botao pequeno variante="principal" onClick={() => irPara('caixa/novo')}>
                 Lançar o apurado
               </Botao>
             )}
@@ -392,17 +380,6 @@ export function Painel() {
           </Botao>
         </div>
       </Cartao>
-
-      {editando && (
-        <FormularioFechamento
-          key={editando.id}
-          registro={editando}
-          pontos={ativos}
-          funcionarios={funcionarios}
-          novo={novoAberto}
-          aoFechar={() => definirEditando(null)}
-        />
-      )}
 
       {pagando && (
         <GavetaPagamento
