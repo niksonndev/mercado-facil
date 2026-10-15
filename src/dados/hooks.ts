@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import type { Acervo, Conta, Despesa, FechamentoCaixa, Fornecedor, Funcionario } from '../dominio/tipos';
+import type { Acervo, Conta, Despesa, FechamentoCaixa, Fornecedor, Funcionario, PontoDeVenda } from '../dominio/tipos';
 import { db } from './db';
 
 /**
@@ -31,6 +31,10 @@ export function useFornecedores(): Fornecedor[] | undefined {
 
 export function useFuncionarios(): Funcionario[] | undefined {
   return useLiveQuery(() => db.funcionarios.orderBy('nome').toArray(), []);
+}
+
+export function usePontos(): PontoDeVenda[] | undefined {
+  return useLiveQuery(() => db.pontos.orderBy('nome').toArray(), []);
 }
 
 export function useFechamentos(): FechamentoCaixa[] | undefined {

@@ -13,6 +13,7 @@ import type {
   Funcionario,
   Id,
   IndicadoresDre,
+  PontoDeVenda,
 } from '../dominio/tipos';
 import { db } from './db';
 
@@ -23,9 +24,16 @@ const agora = (): string => new Date().toISOString();
 type Nascimento<T> = Omit<T, 'id' | 'criadoEm' | 'atualizadoEm'>;
 
 /** Fechamento sem nada lançado, para começar o dia. */
-export function fechamentoVazio(data: DataISO = hojeISO()): Nascimento<FechamentoCaixa> {
+export function fechamentoVazio(
+  data: DataISO = hojeISO(),
+  pontoId: Id | null = null,
+  responsavel: Funcionario | null = null,
+): Nascimento<FechamentoCaixa> {
   return {
     data,
+    pontoId,
+    responsavelId: responsavel?.id ?? null,
+    responsavelNome: responsavel?.nome ?? '',
     fundoInicial: 0,
     dinheiro: 0,
     pix: 0,
@@ -46,6 +54,18 @@ export function salvarFechamento(registro: FechamentoCaixa): Promise<string> {
 }
 
 export const removerFechamento = (id: Id) => db.fechamentos.delete(id);
+
+/** Ponto de venda em branco, para o cadastro. */
+export function pontoVazio(): PontoDeVenda {
+  return novoPonto({ nome: '', ativo: true });
+}
+
+export function novoPonto(dados: Nascimento<PontoDeVenda>): PontoDeVenda {
+  return { ...dados, id: gerarId(), criadoEm: agora() };
+}
+
+export const salvarPonto = (registro: PontoDeVenda) => db.pontos.put(registro);
+export const removerPonto = (id: Id) => db.pontos.delete(id);
 
 export function novoFornecedor(dados: Nascimento<Fornecedor>): Fornecedor {
   return { ...dados, id: gerarId(), criadoEm: agora() };

@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import {
   despesasDoDia,
-  indexarPorData,
+  fechamentosPorDia,
   pendencias,
   resumoDoMes,
   resumoFechamento,
+  rotuloPonto,
   saidasEmDinheiro,
   type CompromissoPendente,
 } from '../dominio/calculos';
@@ -19,8 +20,8 @@ import {
   rotuloPrazo,
 } from '../dominio/datas';
 import { formatarDinheiro, somarCentavos } from '../dominio/dinheiro';
-import type { FechamentoCaixa } from '../dominio/tipos';
-import { useAcervo } from '../dados/hooks';
+import type { FechamentoCaixa, Id } from '../dominio/tipos';
+import { useAcervo, useFuncionarios, usePontos } from '../dados/hooks';
 import { pagarCompromisso } from '../dados/pagamentos';
 import { fechamentoVazio, novoFechamento } from '../dados/repositorio';
 import { FormularioFechamento } from '../componentes/FormularioFechamento';
@@ -46,6 +47,8 @@ const SITUACAO: Record<string, { rotulo: string; cor: string }> = {
 
 export function Painel() {
   const acervo = useAcervo();
+  const pontos = usePontos() ?? [];
+  const funcionarios = useFuncionarios() ?? [];
   const [editando, definirEditando] = useState<FechamentoCaixa | null>(null);
   const [pagando, definirPagando] = useState<CompromissoPendente | null>(null);
 
@@ -56,22 +59,33 @@ export function Painel() {
 
   const resumo = resumoDoMes(competencia, acervo, hoje);
   const alertas = pendencias(acervo, hoje);
-  const fechamentoHoje = indexarPorData(acervo.fechamentos).get(hoje);
+  const fechamentosHoje = fechamentosPorDia(acervo.fechamentos).get(hoje) ?? [];
+  const ativos = pontos.filter((ponto) => ponto.ativo);
   const compromissos = [...acervo.contas.map((c) => c), ...acervo.custos, ...acervo.folha];
 
-  const abrirDia = (fechamento: FechamentoCaixa) => definirEditando(fechamento);
-  const abrirHoje = () => {
-    if (fechamentoHoje) return abrirDia(fechamentoHoje);
-    definirEditando(novoFechamento(fechamentoVazio(hoje)));
-  };
+  /** Abre o fechamento do caixa informado, ou começa um novo nele. */
+  const abrirCaixa = (pontoId: Id | null) =>
+    definirEditando(
+      fechamentosHoje.find((fechamento) => fechamento.pontoId === pontoId) ??
+        novoFechamento(fechamentoVazio(hoje, pontoId)),
+    );
+
+  /** Caixa ativo que ainda não fechou hoje: é o trabalho que falta. */
+  const caixaAbertoHoje =
+    ativos.find(
+      (ponto) => !fechamentosHoje.some((fechamento) => fechamento.pontoId === ponto.id),
+    ) ?? null;
 
   const registrarPagamento = async (pagamento: Pagamento, compromisso: CompromissoPendente) => {
     await pagarCompromisso(compromisso, pagamento);
   };
 
-  const emDinheiroHoje = fechamentoHoje
-    ? saidasEmDinheiro(despesasDoDia(acervo.despesas, hoje))
-    : 0;
+  const doDia = fechamentosHoje.map((fechamento) => resumoFechamento(fechamento));
+  const vendasHoje = somarCentavos(doDia.map((dia) => dia.vendas));
+  const fiadoHoje = somarCentavos(doDia.map((dia) => dia.fiado));
+  const fundoHoje = somarCentavos(fechamentosHoje.map((fechamento) => fechamento.fundoInicial));
+  const dinheiroHoje = somarCentavos(fechamentosHoje.map((fechamento) => fechamento.dinheiro));
+  const emDinheiroHoje = saidasEmDinheiro(despesasDoDia(acervo.despesas, hoje));
 
   const proximas = alertas.proximas.slice(0, 4);
   const destaque = [...alertas.atrasadas, ...alertas.vencemHoje, ...proximas].slice(0, 5);
@@ -83,34 +97,67 @@ export function Painel() {
         destaque
         titulo={`Caixa de ${formatarDataComDia(hoje)}`}
         acao={
-          <Botao pequeno variante={fechamentoHoje ? 'fantasma' : 'principal'} onClick={abrirHoje}>
-            {fechamentoHoje ? 'Corrigir' : 'Fechar o dia'}
-          </Botao>
+          <>
+            {caixaAbertoHoje && (
+              <Botao pequeno onClick={() => abrirCaixa(caixaAbertoHoje.id)}>
+                {fechamentosHoje.length === 0
+                  ? 'Fechar o dia'
+                  : `Fechar ${caixaAbertoHoje.nome}`}
+              </Botao>
+            )}
+            {fechamentosHoje.length > 0 && (
+              <Botao
+                pequeno
+                variante={caixaAbertoHoje ? 'fantasma' : 'principal'}
+                onClick={() => abrirCaixa(fechamentosHoje[0]?.pontoId ?? null)}
+              >
+                Corrigir
+              </Botao>
+            )}
+            {fechamentosHoje.length === 0 && ativos.length === 0 && (
+              <Botao pequeno variante="principal" onClick={() => abrirCaixa(null)}>
+                Fechar o dia
+              </Botao>
+            )}
+          </>
         }
       >
-        {fechamentoHoje ? (
+        {fechamentosHoje.length > 0 ? (
           <>
-            <div className="valor valor--grande">
-              {formatarDinheiro(resumoFechamento(fechamentoHoje).vendas)}
-            </div>
+            <div className="valor valor--grande">{formatarDinheiro(vendasHoje)}</div>
             <div className="estatistica__detalhe" style={{ marginBottom: 10 }}>
-              vendas do dia · {formatarDinheiro(resumoFechamento(fechamentoHoje).fiado)} no
-              fiado
+              vendas do dia · {formatarDinheiro(fiadoHoje)} no fiado
+              {fechamentosHoje.length > 1
+                ? ` · ${fechamentosHoje.length} caixas fechados`
+                : ''}
             </div>
             <Legenda
               itens={[
                 ...FORMAS_PAGAMENTO.map((forma) => ({
                   rotulo: forma.rotulo,
                   cor: forma.cor,
-                  valor: formatarDinheiro(fechamentoHoje[forma.valor]),
+                  valor: formatarDinheiro(
+                    somarCentavos(fechamentosHoje.map((fechamento) => fechamento[forma.valor])),
+                  ),
                 })),
                 {
                   rotulo: FIADO.rotulo,
                   cor: FIADO.cor,
-                  valor: formatarDinheiro(fechamentoHoje.fiado),
+                  valor: formatarDinheiro(fiadoHoje),
                 },
               ]}
             />
+            {fechamentosHoje.length > 1 && (
+              <div style={{ marginTop: 12 }}>
+                {fechamentosHoje.map((fechamento) => (
+                  <Ficha
+                    key={fechamento.id}
+                    rotulo={rotuloPonto(pontos, fechamento.pontoId)}
+                    valor={formatarDinheiro(resumoFechamento(fechamento).vendas)}
+                  />
+                ))}
+              </div>
+            )}
           </>
         ) : (
           <Vazio
@@ -120,22 +167,17 @@ export function Painel() {
         )}
       </Cartao>
 
-      {fechamentoHoje && (
+      {fechamentosHoje.length > 0 && (
         <Cartao titulo="Dinheiro na gaveta">
-          <Ficha rotulo="Fundo de caixa" valor={formatarDinheiro(fechamentoHoje.fundoInicial)} />
-          <Ficha
-            rotulo="Vendas em dinheiro"
-            valor={formatarDinheiro(fechamentoHoje.dinheiro)}
-          />
+          <Ficha rotulo="Fundo de caixa" valor={formatarDinheiro(fundoHoje)} />
+          <Ficha rotulo="Vendas em dinheiro" valor={formatarDinheiro(dinheiroHoje)} />
           <Ficha
             rotulo="Saiu do caixa hoje"
             valor={`- ${formatarDinheiro(emDinheiroHoje)}`}
           />
           <Ficha
             rotulo="Deveria estar na gaveta"
-            valor={formatarDinheiro(
-              fechamentoHoje.fundoInicial + fechamentoHoje.dinheiro - emDinheiroHoje,
-            )}
+            valor={formatarDinheiro(fundoHoje + dinheiroHoje - emDinheiroHoje)}
             cor="var(--acento)"
           />
         </Cartao>
@@ -253,6 +295,8 @@ export function Painel() {
         <FormularioFechamento
           key={editando.id}
           registro={editando}
+          pontos={ativos}
+          funcionarios={funcionarios}
           aoFechar={() => definirEditando(null)}
         />
       )}

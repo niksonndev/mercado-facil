@@ -18,11 +18,38 @@ export type Competencia = string;
 /** Dinheiro em centavos inteiros — nunca float, para não perder centavo. */
 export type Centavos = number;
 
+/**
+ * Ponto de venda: o caixa físico da loja.
+ *
+ * Um mercadinho de bairro tem um só e não precisa cadastrar nada. Quem tem
+ * dois ou três (ou um supermercado, com um caixa por operador) cadastra cada um
+ * e fecha o dia caixa por caixa, como faz no balcão.
+ */
+export interface PontoDeVenda {
+  id: Id;
+  nome: string;
+  /** Inativo sai das escolhas novas e fica fora da conta de dias sem fechamento. */
+  ativo: boolean;
+  criadoEm: string;
+}
+
 /** Fechamento de caixa de um dia (o que o mercadinho anota à noite). */
 export interface FechamentoCaixa {
   id: Id;
-  /** Dia do movimento. Só existe um fechamento por data. */
+  /** Dia do movimento. Existe um fechamento por data e por ponto de venda. */
   data: DataISO;
+  /**
+   * Caixa que fechou o dia.
+   *
+   * `null` é o caixa único de quem não separa ponto de venda: é o caso do
+   * mercadinho de bairro. Separar em dois exige cadastrar os pontos, e aí cada
+   * fechamento aponta para o seu.
+   */
+  pontoId: Id | null;
+  /** Funcionário responsável pelo caixa naquele dia. */
+  responsavelId: Id | null;
+  /** Nome copiado no fechamento: não depende de o funcionário continuar cadastrado. */
+  responsavelNome: string;
   /** Troco que começou o dia no caixa. */
   fundoInicial: Centavos;
   dinheiro: Centavos;

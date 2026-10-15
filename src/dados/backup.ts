@@ -13,6 +13,7 @@ import type {
   FormaPagamento,
   Funcionario,
   IndicadoresDre,
+  PontoDeVenda,
   TipoConta,
   TipoDespesa,
 } from '../dominio/tipos';
@@ -124,6 +125,9 @@ function lerFechamento(bruto: Record<string, unknown>): FechamentoCaixa | null {
   return {
     id: id(bruto.id),
     data,
+    pontoId: typeof bruto.pontoId === 'string' ? bruto.pontoId : null,
+    responsavelId: typeof bruto.responsavelId === 'string' ? bruto.responsavelId : null,
+    responsavelNome: comoTexto(bruto.responsavelNome),
     fundoInicial: comoCentavos(bruto.fundoInicial),
     dinheiro: comoCentavos(bruto.dinheiro),
     pix: comoCentavos(bruto.pix),
@@ -229,6 +233,15 @@ function lerFornecedor(bruto: Record<string, unknown>): Fornecedor {
   };
 }
 
+function lerPonto(bruto: Record<string, unknown>): PontoDeVenda {
+  return {
+    id: id(bruto.id),
+    nome: comoTexto(bruto.nome, 'Caixa'),
+    ativo: comoBooleano(bruto.ativo, true),
+    criadoEm: momento(bruto.criadoEm),
+  };
+}
+
 function lerFolha(bruto: Record<string, unknown>): FolhaItem | null {
   const competencia = comoTexto(bruto.competencia);
   if (!/^\d{4}-\d{2}$/.test(competencia)) return null;
@@ -313,6 +326,7 @@ export async function importarBackup(texto: string): Promise<ResultadoImportacao
     .map(lerCusto)
     .filter((item): item is CustoOperacional => item !== null);
   const fornecedores = comoLista(dados.fornecedores).map(lerFornecedor);
+  const pontos = comoLista(dados.pontos).map(lerPonto);
   const funcionarios = comoLista(dados.funcionarios).map(lerFuncionario);
   const folha = comoLista(dados.folha)
     .map(lerFolha)
@@ -323,6 +337,7 @@ export async function importarBackup(texto: string): Promise<ResultadoImportacao
 
   const leram = {
     fechamentos: fechamentos.length,
+    pontos: pontos.length,
     contas: contas.length,
     despesas: despesas.length,
     custos: custos.length,
@@ -342,6 +357,7 @@ export async function importarBackup(texto: string): Promise<ResultadoImportacao
     await Promise.all(db.tables.map((tabela) => tabela.clear()));
 
     await db.fechamentos.bulkPut(fechamentos);
+    await db.pontos.bulkPut(pontos);
     await db.fornecedores.bulkPut(fornecedores);
     await db.contas.bulkPut(contas);
     await db.despesas.bulkPut(despesas);

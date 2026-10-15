@@ -1,30 +1,48 @@
 import { useState } from 'react';
-import { resumoFechamento } from '../dominio/calculos';
+import { resumoFechamento, rotuloPonto } from '../dominio/calculos';
 import { formatarDinheiro } from '../dominio/dinheiro';
 import { formatarDataComDia, hojeISO } from '../dominio/datas';
 import { FIADO, FORMAS_PAGAMENTO } from '../dominio/categorias';
-import type { FechamentoCaixa } from '../dominio/tipos';
+import type { FechamentoCaixa, Funcionario, PontoDeVenda } from '../dominio/tipos';
 import { db } from '../dados/db';
 import { salvarFechamento } from '../dados/repositorio';
 import { Botao, Ficha } from './base';
-import { AreaTexto, Campo, Dupla, EntradaData, EntradaDinheiro } from './campos';
+import { AreaTexto, Campo, Dupla, EntradaData, EntradaDinheiro, Selecao } from './campos';
 import { Gaveta } from './Gaveta';
 import { useRascunho } from './rascunho';
 
 export interface PropsFormularioFechamento {
   registro: FechamentoCaixa;
+  /** Pontos de venda cadastrados. Vazio é a loja de um caixa só. */
+  pontos: PontoDeVenda[];
+  funcionarios: Funcionario[];
   aoFechar: () => void;
 }
 
 /**
  * Fechamento de um dia: o troco que começou o caixa e o que foi vendido em cada
  * forma de pagamento, mais o fiado.
+ *
+ * Quando a loja tem mais de um caixa, o mesmo dia é fechado uma vez por ponto
+ * de venda, cada um com a pessoa que respondeu por ele.
  */
-export function FormularioFechamento({ registro, aoFechar }: PropsFormularioFechamento) {
+export function FormularioFechamento({
+  registro,
+  pontos,
+  funcionarios,
+  aoFechar,
+}: PropsFormularioFechamento) {
   const { rascunho, atualizar, erro, definirErro } = useRascunho(registro);
   const [salvando, definirSalvando] = useState(false);
   const resumo = resumoFechamento(rascunho);
   const novo = registro.data === '' || registro.criadoEm === '';
+  const ativos = funcionarios.filter((funcionario) => funcionario.ativo);
+
+  const trocarResponsavel = (valor: string) => {
+    const funcionario = ativos.find((pessoa) => pessoa.id === valor) ?? null;
+    atualizar('responsavelId', funcionario?.id ?? null);
+    atualizar('responsavelNome', funcionario?.nome ?? '');
+  };
 
   const salvar = async () => {
     if (!rascunho.data) {
@@ -34,10 +52,18 @@ export function FormularioFechamento({ registro, aoFechar }: PropsFormularioFech
 
     definirSalvando(true);
     try {
-      const existente = await db.fechamentos.where('data').equals(rascunho.data).first();
-      if (existente && existente.id !== rascunho.id) {
+      // Um fechamento por dia e por caixa: o segundo caixa fecha o mesmo dia.
+      const doDia = await db.fechamentos.where('data').equals(rascunho.data).toArray();
+      const conflito = doDia.find(
+        (outro) =>
+          outro.id !== rascunho.id && (outro.pontoId ?? '') === (rascunho.pontoId ?? ''),
+      );
+
+      if (conflito) {
         definirErro(
-          `Já existe um fechamento em ${formatarDataComDia(rascunho.data)}. Abra o dia na lista para corrigir.`,
+          `${rotuloPonto(pontos, conflito.pontoId)} já fechou ${formatarDataComDia(
+            rascunho.data,
+          )}. Abra o dia na lista para corrigir.`,
         );
         return;
       }
@@ -89,6 +115,39 @@ export function FormularioFechamento({ registro, aoFechar }: PropsFormularioFech
           )}
         </Campo>
       </Dupla>
+
+      {pontos.length > 0 && (
+        <Campo rotulo="Ponto de venda" dica="Cada caixa fecha o dia no seu lançamento">
+          {(id) => (
+            <Selecao<string>
+              id={id}
+              valor={rascunho.pontoId ?? ''}
+              vazio="Sem ponto de venda"
+              opcoes={pontos.map((ponto) => ({ valor: ponto.id, rotulo: ponto.nome }))}
+              aoMudar={(valor) => atualizar('pontoId', valor || null)}
+            />
+          )}
+        </Campo>
+      )}
+
+      {ativos.length > 0 && (
+        <Campo rotulo="Responsável pelo caixa" dica="Quem respondeu por esse caixa na data">
+          {(id) => (
+            <Selecao<string>
+              id={id}
+              valor={rascunho.responsavelId ?? ''}
+              vazio="Não informado"
+              opcoes={ativos.map((funcionario) => ({
+                valor: funcionario.id,
+                rotulo: funcionario.cargo
+                  ? `${funcionario.nome} (${funcionario.cargo})`
+                  : funcionario.nome,
+              }))}
+              aoMudar={trocarResponsavel}
+            />
+          )}
+        </Campo>
+      )}
 
       {FORMAS_PAGAMENTO.map((forma) => (
         <Campo key={forma.valor} rotulo={forma.rotulo}>

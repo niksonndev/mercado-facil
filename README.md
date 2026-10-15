@@ -14,7 +14,7 @@ primeira visita.
 | Seção | Para quê |
 | --- | --- |
 | **Painel** | O que fazer hoje: fechar o caixa, o que venceu, quanto entrou e quanto saiu no mês. |
-| **Caixa** | Fundo de caixa (troco do início do dia) e fechamento do dia por dinheiro, PIX, débito, crédito e fiado. Mostra o que deveria estar na gaveta e avisa os dias do mês que ficaram sem fechamento. |
+| **Caixa** | Fundo de caixa (troco do início do dia) e fechamento do dia por dinheiro, PIX, débito, crédito e fiado. Um fechamento por dia e por ponto de venda (caixa 1, caixa 2), cada um com o funcionário que respondeu por ele. Mostra o que deveria estar na gaveta e avisa os dias do mês que ficaram sem fechamento. |
 | **Contas** | Boletos de fornecedor (vencimento, valor, fornecedor), cheques pré-datados (número, banco, bom para) e compras à vista (dinheiro, PIX, débito, crédito). Baixa de pagamento com data, valor e forma. |
 | **Despesas** | Retirada de caixa e pagamentos diversos, com a marcação de "saiu do dinheiro da gaveta" que entra na conferência do caixa. |
 | **Custos** | Aluguel, energia, água, internet, contabilidade e afins, por competência, com repetição automática dos recorrentes para o mês seguinte. |
@@ -60,6 +60,13 @@ pnpm preview      # serve o build: aqui o service worker é exercitado de verdad
   na gaveta.
 - **Navegação por hash** (`#/contas`): o GitHub Pages não reescreve rota, e o
   link direto e o botão voltar do celular precisam funcionar de qualquer jeito.
+- **Um fechamento por dia e por ponto de venda.** O mercadinho de um caixa só
+  fecha o dia sem cadastrar nada: o fechamento fica com ponto nulo e a tela o
+  chama de "caixa único". Quem tem dois caixas cadastra os pontos e fecha cada
+  um no seu lançamento, com o responsável daquele dia. A chave do lançamento é
+  `data|ponto`, e é ela que impede o segundo fechamento do mesmo caixa no mesmo
+  dia. Apagar um ponto não apaga o histórico: os fechamentos antigos mostram
+  "caixa removido".
 - **Formas de pagamento** viram cores em `src/dominio/categorias.ts`; etiqueta,
   legenda e relatório leem de lá, então mudar um rótulo é mexer em um lugar só.
 

@@ -10,6 +10,8 @@ import type {
   FechamentoCaixa,
   FolhaItem,
   FormaPagamento,
+  Id,
+  PontoDeVenda,
   Situacao,
 } from './tipos';
 
@@ -448,18 +450,28 @@ export function vendasPorDia(
   fechamentos: FechamentoCaixa[],
   competencia: Competencia,
 ): VendaDoDia[] {
-  return fechamentos
-    .filter((fechamento) => competenciaDe(fechamento.data) === competencia)
-    .map((fechamento) => {
-      const resumo = resumoFechamento(fechamento);
-      return {
+  const porDia = new Map<DataISO, VendaDoDia>();
+
+  for (const fechamento of fechamentos) {
+    if (competenciaDe(fechamento.data) !== competencia) continue;
+    const resumo = resumoFechamento(fechamento);
+    const doDia = porDia.get(fechamento.data);
+
+    if (doDia) {
+      // Dois caixas fechados no mesmo dia somam no mesmo ponto do gráfico.
+      doDia.vendas += resumo.vendas;
+      doDia.recebido += resumo.recebido;
+    } else {
+      porDia.set(fechamento.data, {
         data: fechamento.data,
         dia: Number(fechamento.data.slice(8)),
         vendas: resumo.vendas,
         recebido: resumo.recebido,
-      };
-    })
-    .sort((a, b) => a.dia - b.dia);
+      });
+    }
+  }
+
+  return [...porDia.values()].sort((a, b) => a.dia - b.dia);
 }
 
 /** Total da folha (custo para a empresa) em uma competência. */
@@ -474,9 +486,88 @@ export function totalFolhaCompetencia(
   );
 }
 
-/** Índice dos fechamentos por data, para achar o dia sem varrer a lista. */
-export function indexarPorData(
+/**
+ * Chave de um fechamento: existe um por data e por ponto de venda.
+ *
+ * O ponto nulo (caixa único de quem não separa) também tem a sua chave, então
+ * o mercadinho de um caixa só continua enxergando um fechamento por dia.
+ */
+export function chaveFechamento(
+  fechamento: Pick<FechamentoCaixa, 'data' | 'pontoId'>,
+): string {
+  return `${fechamento.data}|${fechamento.pontoId ?? ''}`;
+}
+
+/** Fechamentos agrupados por dia, para a tela do caixa. */
+export function fechamentosPorDia(
   fechamentos: FechamentoCaixa[],
-): Map<DataISO, FechamentoCaixa> {
-  return new Map(fechamentos.map((fechamento) => [fechamento.data, fechamento]));
+): Map<DataISO, FechamentoCaixa[]> {
+  const porDia = new Map<DataISO, FechamentoCaixa[]>();
+
+  for (const fechamento of fechamentos) {
+    const doDia = porDia.get(fechamento.data);
+    if (doDia) {
+      doDia.push(fechamento);
+    } else {
+      porDia.set(fechamento.data, [fechamento]);
+    }
+  }
+
+  return porDia;
+}
+
+/** Índice dos fechamentos pela chave do dia, para abrir um lançamento sem varrer a lista. */
+export function indexarPorFechamento(
+  fechamentos: FechamentoCaixa[],
+): Map<string, FechamentoCaixa> {
+  return new Map(fechamentos.map((fechamento) => [chaveFechamento(fechamento), fechamento]));
+}
+
+/**
+ * Nome do caixa que fechou o dia.
+ *
+ * O caixa único não tem cadastro: chamá-lo de "Caixa único" evita inventar um
+ * ponto de venda que o dono não criou.
+ */
+export function rotuloPonto(pontos: PontoDeVenda[], pontoId: Id | null): string {
+  if (!pontoId) return 'Caixa único';
+  return pontos.find((ponto) => ponto.id === pontoId)?.nome ?? 'Caixa removido';
+}
+
+export interface ResumoPorPonto {
+  pontoId: Id | null;
+  nome: string;
+  vendas: Centavos;
+  recebido: Centavos;
+  fiado: Centavos;
+  /** Quantos dias aquele caixa fechou no mês. */
+  dias: number;
+}
+
+/** Vendas do mês separadas por ponto de venda, do que mais vende para o que menos vende. */
+export function resumoPorPonto(
+  pontos: PontoDeVenda[],
+  fechamentos: FechamentoCaixa[],
+  competencia: Competencia,
+): ResumoPorPonto[] {
+  const doMes = fechamentos.filter(
+    (fechamento) => competenciaDe(fechamento.data) === competencia,
+  );
+  const ids = [...new Set(doMes.map((fechamento) => fechamento.pontoId))];
+
+  return ids
+    .map((pontoId) => {
+      const meus = doMes.filter((fechamento) => fechamento.pontoId === pontoId);
+      const resumos = meus.map(resumoFechamento);
+
+      return {
+        pontoId,
+        nome: rotuloPonto(pontos, pontoId),
+        vendas: somarCentavos(resumos.map((resumo) => resumo.vendas)),
+        recebido: somarCentavos(resumos.map((resumo) => resumo.recebido)),
+        fiado: somarCentavos(resumos.map((resumo) => resumo.fiado)),
+        dias: meus.length,
+      };
+    })
+    .sort((a, b) => b.vendas - a.vendas);
 }

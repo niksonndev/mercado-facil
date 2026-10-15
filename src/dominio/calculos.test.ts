@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
   calcularFolha,
+  chaveFechamento,
   compromissosPendentes,
   dinheiroEsperadoEmCaixa,
   dre,
+  fechamentosPorDia,
+  indexarPorFechamento,
   pendencias,
   resumoDoMes,
   resumoFechamento,
+  resumoPorPonto,
+  rotuloPonto,
   saidasEmDinheiro,
   situacaoDoCompromisso,
   vendasPorDia,
@@ -20,6 +25,7 @@ import type {
   FechamentoCaixa,
   FolhaItem,
   IndicadoresDre,
+  PontoDeVenda,
 } from './tipos';
 
 const HOJE = '2026-10-15';
@@ -27,6 +33,9 @@ const HOJE = '2026-10-15';
 function fechamento(campos: Partial<FechamentoCaixa> & { data: string }): FechamentoCaixa {
   return {
     id: `f-${campos.data}`,
+    pontoId: null,
+    responsavelId: null,
+    responsavelNome: '',
     fundoInicial: 0,
     dinheiro: 0,
     pix: 0,
@@ -463,5 +472,57 @@ describe('DRE do mês', () => {
     expect(vazio.resultadoLiquido).toBe(0);
     expect(vazio.margemBruta).toBe(0);
     expect(vazio.margemLiquida).toBe(0);
+  });
+});
+
+describe('pontos de venda', () => {
+  const caixa1: PontoDeVenda = { id: 'p1', nome: 'Caixa 1', ativo: true, criadoEm: '' };
+  const caixa2: PontoDeVenda = { id: 'p2', nome: 'Caixa 2', ativo: true, criadoEm: '' };
+
+  const MES: FechamentoCaixa[] = [
+    fechamento({ id: 'f1', data: HOJE, pontoId: 'p1', dinheiro: 10000, credito: 5000 }),
+    fechamento({ id: 'f2', data: HOJE, pontoId: 'p2', dinheiro: 4000, credito: 2000 }),
+    fechamento({ id: 'f3', data: '2026-10-14', dinheiro: 7000 }),
+  ];
+
+  it('identifica cada fechamento por dia e ponto de venda', () => {
+    const indice = indexarPorFechamento(MES);
+
+    expect(indice.get(chaveFechamento({ data: HOJE, pontoId: 'p1' }))?.id).toBe('f1');
+    expect(indice.get(chaveFechamento({ data: HOJE, pontoId: 'p2' }))?.id).toBe('f2');
+    expect(indice.get(chaveFechamento({ data: '2026-10-14', pontoId: null }))?.id).toBe('f3');
+  });
+
+  it('agrupa os dois caixas no mesmo dia', () => {
+    const porDia = fechamentosPorDia(MES);
+
+    expect(porDia.get(HOJE)?.map((item) => item.id)).toEqual(['f1', 'f2']);
+    expect(porDia.get('2026-10-14')?.length).toBe(1);
+  });
+
+  it('soma os dois caixas no mesmo ponto do gráfico', () => {
+    const serie = vendasPorDia(MES, '2026-10');
+
+    expect(serie.map((item) => [item.dia, item.vendas])).toEqual([
+      [14, 7000],
+      [15, 21000],
+    ]);
+  });
+
+  it('separa as vendas do mês por caixa, do maior para o menor', () => {
+    const resumo = resumoPorPonto([caixa1, caixa2], MES, '2026-10');
+
+    expect(resumo.map((item) => [item.nome, item.vendas, item.dias])).toEqual([
+      ['Caixa 1', 15000, 1],
+      ['Caixa único', 7000, 1],
+      ['Caixa 2', 6000, 1],
+    ]);
+  });
+
+  it('chama de caixa único o fechamento sem ponto de venda cadastrado', () => {
+    expect(rotuloPonto([caixa1], null)).toBe('Caixa único');
+    expect(rotuloPonto([caixa1], 'p1')).toBe('Caixa 1');
+    // Ponto apagado depois do fechamento: o histórico não pode virar "undefined".
+    expect(rotuloPonto([caixa1], 'p9')).toBe('Caixa removido');
   });
 });

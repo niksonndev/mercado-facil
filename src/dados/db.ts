@@ -8,6 +8,7 @@ import type {
   Fornecedor,
   Funcionario,
   IndicadoresDre,
+  PontoDeVenda,
 } from '../dominio/tipos';
 
 /**
@@ -22,6 +23,7 @@ import type {
  */
 export class BancoMercadoFacil extends Dexie {
   fechamentos!: Table<FechamentoCaixa, string>;
+  pontos!: Table<PontoDeVenda, string>;
   fornecedores!: Table<Fornecedor, string>;
   contas!: Table<Conta, string>;
   despesas!: Table<Despesa, string>;
@@ -49,6 +51,14 @@ export class BancoMercadoFacil extends Dexie {
     this.version(2).stores({
       indicadores: 'competencia',
     });
+
+    // v3: o fechamento passa a poder ser por ponto de venda (caixa 1, caixa 2).
+    // Não há valor a preencher nos registros antigos: ponto nulo continua sendo
+    // o caixa único de sempre, e quem quiser separar cadastra os pontos.
+    this.version(3).stores({
+      pontos: 'id, nome, ativo',
+      fechamentos: 'id, data, pontoId',
+    });
   }
 }
 
@@ -57,6 +67,7 @@ export const db = new BancoMercadoFacil();
 /** Nomes das tabelas na ordem em que aparecem no backup. */
 export const TABELAS = [
   'fechamentos',
+  'pontos',
   'fornecedores',
   'contas',
   'despesas',

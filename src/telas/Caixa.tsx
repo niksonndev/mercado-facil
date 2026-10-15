@@ -1,8 +1,12 @@
 import { useState } from 'react';
 import {
-  indexarPorData,
+  chaveFechamento,
+  fechamentosPorDia,
+  indexarPorFechamento,
   resumoDoMes,
   resumoFechamento,
+  resumoPorPonto,
+  rotuloPonto,
 } from '../dominio/calculos';
 import { FIADO, FORMAS_PAGAMENTO } from '../dominio/categorias';
 import {
@@ -14,56 +18,114 @@ import {
   nomeDoMes,
 } from '../dominio/datas';
 import { formatarDinheiro } from '../dominio/dinheiro';
-import type { Competencia, FechamentoCaixa } from '../dominio/tipos';
+import type { Competencia, FechamentoCaixa, Id, PontoDeVenda } from '../dominio/tipos';
+import { useAcervo, useFuncionarios, usePontos } from '../dados/hooks';
 import {
   fechamentoVazio,
   novoFechamento,
+  pontoVazio,
   removerFechamento,
+  removerPonto,
 } from '../dados/repositorio';
-import { useAcervo } from '../dados/hooks';
 import { Aviso, Botao, Cartao, Ficha, Legenda, Vazio } from '../componentes/base';
-import { BotaoExcluir, LinhaLista } from '../componentes/lista';
+import { BotaoExcluir, GrupoFiltros, LinhaLista } from '../componentes/lista';
 import { FormularioFechamento } from '../componentes/FormularioFechamento';
+import { FormularioPonto } from '../componentes/FormularioPonto';
 import { SeletorMes } from '../componentes/SeletorMes';
+
+/** O filtro "caixa único" pega os fechamentos de quem não separa ponto de venda. */
+const SEM_PONTO = 'sem-ponto';
 
 export function Caixa() {
   const acervo = useAcervo();
+  const pontos = usePontos() ?? [];
+  const funcionarios = useFuncionarios() ?? [];
   const [editando, definirEditando] = useState<FechamentoCaixa | null>(null);
+  const [editandoPonto, definirEditandoPonto] = useState<PontoDeVenda | null>(null);
   const [competencia, definirCompetencia] = useState<Competencia>(mesAtual);
+  const [filtro, definirFiltro] = useState<string>('todos');
   const hoje = hojeISO();
 
   if (!acervo) return <Vazio titulo="Carregando…" />;
 
-  const porData = indexarPorData(acervo.fechamentos);
+  const porDia = fechamentosPorDia(acervo.fechamentos);
+  const porChave = indexarPorFechamento(acervo.fechamentos);
   const doMes = acervo.fechamentos
     .filter((fechamento) => competenciaDe(fechamento.data) === competencia)
-    .sort((a, b) => b.data.localeCompare(a.data));
+    .sort(
+      (a, b) =>
+        b.data.localeCompare(a.data) ||
+        rotuloPonto(pontos, a.pontoId).localeCompare(rotuloPonto(pontos, b.pontoId)),
+    );
   const resumo = resumoDoMes(competencia, acervo, hoje);
-  const competenciasComDados = acervo.fechamentos.map((fechamento) =>
-    competenciaDe(fechamento.data),
-  );
+  const ativos = pontos.filter((ponto) => ponto.ativo);
+  const temCaixaUnico = acervo.fechamentos.some((fechamento) => !fechamento.pontoId);
 
-  // Dias que passaram sem fechamento: é o furo que estraga o relatório.
+  const visiveis =
+    filtro === 'todos'
+      ? doMes
+      : doMes.filter((fechamento) => (fechamento.pontoId ?? SEM_PONTO) === filtro);
+
+  // Dias que passaram sem fechamento: é o furo que estraga o relatório. Com o
+  // filtro em um caixa, ele cobra só aquele caixa.
+  const comFechamento = new Set(visiveis.map(chaveFechamento));
   const semFechamento =
     competencia === mesAtual()
-      ? diasDoMes(competencia).filter((dia) => dia < hoje && !porData.has(dia))
+      ? diasDoMes(competencia).filter((dia) => {
+          if (dia >= hoje) return false;
+          if (filtro === 'todos') return !porDia.has(dia);
+          return !comFechamento.has(`${dia}|${filtro === SEM_PONTO ? '' : filtro}`);
+        })
       : [];
 
-  const fecharDia = (data: string) => {
-    definirEditando(porData.get(data) ?? novoFechamento(fechamentoVazio(data)));
+  /** O caixa que ainda não fechou hoje: é o que o botão do dia abre. */
+  const pontoAbertoHoje =
+    ativos.find((ponto) => !porChave.has(chaveFechamento({ data: hoje, pontoId: ponto.id }))) ??
+    null;
+  const pontoDoFiltro = filtro === 'todos' || filtro === SEM_PONTO ? null : filtro;
+  const pontoDoDia = pontoDoFiltro ?? pontoAbertoHoje?.id ?? ativos[0]?.id ?? null;
+  const fechamentoDeHoje = porChave.get(chaveFechamento({ data: hoje, pontoId: pontoDoDia }));
+
+  const abrirDia = (data: string, pontoId: Id | null) => {
+    const existente = porChave.get(chaveFechamento({ data, pontoId }));
+    definirEditando(existente ?? novoFechamento(fechamentoVazio(data, pontoId)));
   };
+
+  const opcoesFiltro = [
+    { valor: 'todos', rotulo: 'Todos os caixas', contagem: doMes.length },
+    ...pontos.map((ponto) => ({
+      valor: ponto.id,
+      rotulo: ponto.nome,
+      contagem: doMes.filter((fechamento) => fechamento.pontoId === ponto.id).length,
+    })),
+    ...(temCaixaUnico
+      ? [
+          {
+            valor: SEM_PONTO,
+            rotulo: 'Caixa único',
+            contagem: doMes.filter((fechamento) => !fechamento.pontoId).length,
+          },
+        ]
+      : []),
+  ];
+
+  const porPonto = resumoPorPonto(pontos, acervo.fechamentos, competencia);
 
   return (
     <>
       <SeletorMes
         valor={competencia}
         aoMudar={definirCompetencia}
-        extras={competenciasComDados}
+        extras={acervo.fechamentos.map((fechamento) => competenciaDe(fechamento.data))}
       />
 
       <div className="grupo-botoes">
-        <Botao variante="principal" icone="mais-circulo" onClick={() => fecharDia(hoje)}>
-          {porData.has(hoje) ? 'Corrigir hoje' : 'Fechar o dia de hoje'}
+        <Botao
+          variante="principal"
+          icone="mais-circulo"
+          onClick={() => abrirDia(hoje, pontoDoDia)}
+        >
+          {fechamentoDeHoje ? 'Corrigir o caixa de hoje' : 'Fechar o dia de hoje'}
         </Botao>
       </div>
 
@@ -78,7 +140,7 @@ export function Caixa() {
             type="button"
             className="botao botao--pequeno"
             style={{ marginTop: 8 }}
-            onClick={() => fecharDia(semFechamento[semFechamento.length - 1] ?? hoje)}
+            onClick={() => abrirDia(semFechamento[semFechamento.length - 1] ?? hoje, pontoDoDia)}
           >
             Lançar o mais recente
           </button>
@@ -86,9 +148,7 @@ export function Caixa() {
       )}
 
       <Cartao titulo={`Resumo de ${nomeDoMes(competencia)}`}>
-        <div className="valor valor--grande">
-          {formatarDinheiro(resumo.vendas)}
-        </div>
+        <div className="valor valor--grande">{formatarDinheiro(resumo.vendas)}</div>
         <div className="estatistica__detalhe" style={{ marginBottom: 12 }}>
           vendas em {resumo.diasLancados} dia(s) fechado(s)
         </div>
@@ -117,24 +177,51 @@ export function Caixa() {
         </div>
       </Cartao>
 
+      {porPonto.length > 1 && (
+        <Cartao titulo="Vendas por ponto de venda">
+          {porPonto.map((ponto) => (
+            <Ficha
+              key={ponto.pontoId ?? SEM_PONTO}
+              rotulo={`${ponto.nome} · ${ponto.dias} dia(s)`}
+              valor={formatarDinheiro(ponto.vendas)}
+            />
+          ))}
+        </Cartao>
+      )}
+
       <Cartao titulo="Dias fechados">
-        {doMes.length === 0 ? (
+        {pontos.length > 0 && (
+          <div style={{ marginBottom: 12 }}>
+            <GrupoFiltros valor={filtro} opcoes={opcoesFiltro} aoMudar={definirFiltro} />
+          </div>
+        )}
+
+        {visiveis.length === 0 ? (
           <Vazio
             titulo="Nenhum dia fechado neste mês"
             descricao="Comece pelo dia de hoje: informe o troco do início do dia e o total de cada forma de pagamento."
           />
         ) : (
           <div className="lista">
-            {doMes.map((fechamento) => {
+            {visiveis.map((fechamento) => {
               const dia = resumoFechamento(fechamento);
+              const detalhe = [
+                FORMAS_PAGAMENTO.map(
+                  (forma) => `${forma.rotulo} ${formatarDinheiro(dia.porForma[forma.valor])}`,
+                ).join(' · '),
+                dia.fiado > 0 ? `Fiado ${formatarDinheiro(dia.fiado)}` : '',
+                fechamento.responsavelNome ? `Caixa: ${fechamento.responsavelNome}` : '',
+              ]
+                .filter(Boolean)
+                .join(' · ');
+
               return (
                 <LinhaLista
                   key={fechamento.id}
-                  titulo={formatarDataComDia(fechamento.data)}
-                  detalhe={`${FORMAS_PAGAMENTO.map(
-                    (forma) =>
-                      `${forma.rotulo} ${formatarDinheiro(dia.porForma[forma.valor])}`,
-                  ).join(' · ')}${dia.fiado > 0 ? ` · Fiado ${formatarDinheiro(dia.fiado)}` : ''}`}
+                  titulo={`${formatarDataComDia(fechamento.data)}${
+                    fechamento.pontoId ? ` · ${rotuloPonto(pontos, fechamento.pontoId)}` : ''
+                  }`}
+                  detalhe={detalhe}
                   valor={formatarDinheiro(dia.vendas)}
                   aoAbrir={() => definirEditando(fechamento)}
                   acoes={
@@ -150,11 +237,60 @@ export function Caixa() {
         )}
       </Cartao>
 
+      <Cartao
+        titulo="Pontos de venda"
+        acao={
+          <Botao pequeno onClick={() => definirEditandoPonto(pontoVazio())}>
+            Novo
+          </Botao>
+        }
+      >
+        {pontos.length === 0 ? (
+          <Vazio
+            titulo="Você fecha um caixa só"
+            descricao="Cadastre os pontos de venda apenas se a loja tiver mais de um caixa: aí cada um fecha o dia no seu lançamento, com o funcionário que respondeu por ele."
+          />
+        ) : (
+          <div className="lista">
+            {pontos.map((ponto) => (
+              <LinhaLista
+                key={ponto.id}
+                titulo={ponto.nome}
+                etiqueta={
+                  ponto.ativo
+                    ? { texto: 'em uso', cor: 'var(--acento)' }
+                    : { texto: 'inativo', cor: 'var(--suave)' }
+                }
+                detalhe={`${acervo.fechamentos.filter((f) => f.pontoId === ponto.id).length} fechamento(s)`}
+                valor=""
+                aoAbrir={() => definirEditandoPonto(ponto)}
+                acoes={
+                  <BotaoExcluir
+                    descricao={`o ponto de venda ${ponto.nome}`}
+                    aoConfirmar={() => removerPonto(ponto.id)}
+                  />
+                }
+              />
+            ))}
+          </div>
+        )}
+      </Cartao>
+
       {editando && (
         <FormularioFechamento
           key={editando.id}
           registro={editando}
+          pontos={ativos}
+          funcionarios={funcionarios}
           aoFechar={() => definirEditando(null)}
+        />
+      )}
+
+      {editandoPonto && (
+        <FormularioPonto
+          key={editandoPonto.id}
+          registro={editandoPonto}
+          aoFechar={() => definirEditandoPonto(null)}
         />
       )}
     </>

@@ -10,6 +10,7 @@ import type {
   Fornecedor,
   Funcionario,
   IndicadoresDre,
+  PontoDeVenda,
 } from '../dominio/tipos';
 import { db } from './db';
 
@@ -72,6 +73,19 @@ export async function carregarExemplos(hoje: DataISO = hojeISO()): Promise<void>
     criadoEm: agora,
   }));
 
+  // Dois caixas: o mercadinho abre o segundo no fim de semana, que é o
+  // movimento maior. Nos dias de semana, um só.
+  const pontos: PontoDeVenda[] = ['Caixa 1', 'Caixa 2'].map((nome) => ({
+    id: id(),
+    nome,
+    ativo: true,
+    criadoEm: agora,
+  }));
+
+  const caixa1 = pontos[0]?.id ?? null;
+  const caixa2 = pontos[1]?.id ?? null;
+  const responsavel = funcionarios[0] ?? null;
+
   // Fechamentos do dia 1 até ontem: hoje continua em aberto.
   const fechamentos: FechamentoCaixa[] = [];
   const ultimoDia = Number(hoje.slice(8)) - 1;
@@ -79,7 +93,9 @@ export async function carregarExemplos(hoje: DataISO = hojeISO()): Promise<void>
 
   for (let dia = 1; dia <= ultimoDia; dia += 1) {
     const data = `${competencia}-${String(dia).padStart(2, '0')}`;
-    const domingo = new Date(`${data}T12:00:00`).getDay() === 0;
+    const diaDaSemana = new Date(`${data}T12:00:00`).getDay();
+    const domingo = diaDaSemana === 0;
+    const fimDeSemana = domingo || diaDaSemana === 6;
     const movimento = domingo ? 0.45 : 1;
 
     const vendas =
@@ -93,19 +109,45 @@ export async function carregarExemplos(hoje: DataISO = hojeISO()): Promise<void>
 
     vendasDoMes += dinheiro + pix + debito + credito + fiado;
 
+    // No fim de semana o segundo caixa leva 40% do movimento.
+    const fatia = fimDeSemana && caixa2 ? 0.6 : 1;
+    const reparte = (valor: number) => Math.round(valor * fatia);
+
     fechamentos.push({
       id: id(),
       data,
+      pontoId: caixa1,
+      responsavelId: responsavel?.id ?? null,
+      responsavelNome: responsavel?.nome ?? '',
       fundoInicial: reais(200),
-      dinheiro,
-      pix,
-      debito,
-      credito,
-      fiado,
+      dinheiro: reparte(dinheiro),
+      pix: reparte(pix),
+      debito: reparte(debito),
+      credito: reparte(credito),
+      fiado: reparte(fiado),
       observacao: '',
       criadoEm: agora,
       atualizadoEm: agora,
     });
+
+    if (fimDeSemana && caixa2) {
+      fechamentos.push({
+        id: id(),
+        data,
+        pontoId: caixa2,
+        responsavelId: responsavel?.id ?? null,
+        responsavelNome: responsavel?.nome ?? '',
+        fundoInicial: reais(150),
+        dinheiro: dinheiro - reparte(dinheiro),
+        pix: pix - reparte(pix),
+        debito: debito - reparte(debito),
+        credito: credito - reparte(credito),
+        fiado: fiado - reparte(fiado),
+        observacao: 'Caixa do salão',
+        criadoEm: agora,
+        atualizadoEm: agora,
+      });
+    }
   }
 
   const contasBase: Array<Omit<Conta, 'id' | 'criadoEm' | 'atualizadoEm'>> = [
@@ -371,6 +413,7 @@ export async function carregarExemplos(hoje: DataISO = hojeISO()): Promise<void>
 
   await db.transaction('rw', db.tables, async () => {
     await Promise.all(db.tables.map((tabela) => tabela.clear()));
+    await db.pontos.bulkPut(pontos);
     await db.fornecedores.bulkPut(fornecedores);
     await db.funcionarios.bulkPut(funcionarios);
     await db.fechamentos.bulkPut(fechamentos);
