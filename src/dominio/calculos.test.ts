@@ -1,0 +1,327 @@
+import { describe, expect, it } from 'vitest';
+import {
+  calcularFolha,
+  compromissosPendentes,
+  dinheiroEsperadoEmCaixa,
+  pendencias,
+  resumoDoMes,
+  resumoFechamento,
+  saidasEmDinheiro,
+  situacaoDoCompromisso,
+  vendasPorDia,
+  vencimentoPadraoFolha,
+} from './calculos';
+import type {
+  Acervo,
+  Conta,
+  CustoOperacional,
+  Despesa,
+  FechamentoCaixa,
+  FolhaItem,
+} from './tipos';
+
+const HOJE = '2026-10-15';
+
+function fechamento(campos: Partial<FechamentoCaixa> & { data: string }): FechamentoCaixa {
+  return {
+    id: `f-${campos.data}`,
+    fundoInicial: 0,
+    dinheiro: 0,
+    pix: 0,
+    debito: 0,
+    credito: 0,
+    fiado: 0,
+    observacao: '',
+    criadoEm: '2026-10-01T00:00:00.000Z',
+    atualizadoEm: '2026-10-01T00:00:00.000Z',
+    ...campos,
+  };
+}
+
+function conta(campos: Partial<Conta> & { vencimento: string; valor: number }): Conta {
+  return {
+    id: `c-${campos.vencimento}-${campos.valor}`,
+    tipo: 'boleto',
+    fornecedorId: null,
+    fornecedorNome: 'Distribuidora Central',
+    descricao: 'Pedido',
+    emissao: null,
+    chequeNumero: '',
+    chequeBanco: '',
+    pagoEm: null,
+    valorPago: null,
+    formaPagamento: null,
+    observacao: '',
+    criadoEm: '2026-10-01T00:00:00.000Z',
+    atualizadoEm: '2026-10-01T00:00:00.000Z',
+    ...campos,
+  };
+}
+
+function despesa(campos: Partial<Despesa> & { data: string; valor: number }): Despesa {
+  return {
+    id: `d-${campos.data}-${campos.valor}`,
+    tipo: 'diversos',
+    descricao: 'Despesa',
+    categoria: 'geral',
+    formaPagamento: 'dinheiro',
+    retiradaDoCaixa: false,
+    beneficiario: '',
+    observacao: '',
+    criadoEm: '2026-10-01T00:00:00.000Z',
+    ...campos,
+  };
+}
+
+function custo(
+  campos: Partial<CustoOperacional> & { vencimento: string; valorPrevisto: number },
+): CustoOperacional {
+  return {
+    id: `cu-${campos.vencimento}`,
+    categoria: 'outros',
+    descricao: 'Custo',
+    competencia: campos.vencimento.slice(0, 7),
+    recorrente: true,
+    pagoEm: null,
+    valorPago: null,
+    formaPagamento: null,
+    observacao: '',
+    criadoEm: '2026-10-01T00:00:00.000Z',
+    atualizadoEm: '2026-10-01T00:00:00.000Z',
+    ...campos,
+  };
+}
+
+function folhaItem(campos: Partial<FolhaItem> & { competencia: string }): FolhaItem {
+  return {
+    id: `fo-${campos.competencia}`,
+    funcionarioId: null,
+    funcionarioNome: 'Maria',
+    salarioBase: 180000,
+    proventos: 0,
+    descontos: 0,
+    fgts: 14400,
+    encargos: 36000,
+    vencimento: vencimentoPadraoFolha(campos.competencia),
+    pagoEm: null,
+    valorPago: null,
+    observacao: '',
+    criadoEm: '2026-10-01T00:00:00.000Z',
+    ...campos,
+  };
+}
+
+const ACERVO: Acervo = {
+  fechamentos: [
+    fechamento({
+      data: '2026-10-14',
+      fundoInicial: 20000,
+      dinheiro: 50000,
+      pix: 30000,
+      debito: 10000,
+      credito: 20000,
+      fiado: 5000,
+    }),
+    fechamento({
+      data: '2026-10-15',
+      fundoInicial: 20000,
+      dinheiro: 40000,
+      pix: 20000,
+      debito: 5000,
+      credito: 10000,
+      fiado: 2000,
+    }),
+    fechamento({ data: '2026-09-30', dinheiro: 999999 }),
+  ],
+  contas: [
+    conta({ vencimento: '2026-10-10', valor: 30000, pagoEm: '2026-10-10', valorPago: 30000 }),
+    conta({ vencimento: '2026-10-05', valor: 12000 }),
+    conta({ vencimento: '2026-10-18', valor: 8000 }),
+    conta({ vencimento: '2026-10-15', valor: 5000 }),
+    conta({ vencimento: '2026-09-28', valor: 9900, pagoEm: '2026-09-28', valorPago: 9900 }),
+  ],
+  despesas: [
+    despesa({
+      data: '2026-10-13',
+      valor: 20000,
+      tipo: 'retirada',
+      retiradaDoCaixa: true,
+      formaPagamento: 'dinheiro',
+    }),
+    despesa({ data: '2026-10-14', valor: 3500, formaPagamento: 'pix' }),
+    despesa({ data: '2026-09-30', valor: 1500 }),
+  ],
+  custos: [
+    custo({
+      vencimento: '2026-10-05',
+      valorPrevisto: 150000,
+      categoria: 'aluguel',
+      pagoEm: '2026-10-05',
+      valorPago: 150000,
+    }),
+    custo({ vencimento: '2026-10-20', valorPrevisto: 45000, categoria: 'energia' }),
+    custo({ vencimento: '2026-10-08', valorPrevisto: 12000, categoria: 'agua' }),
+  ],
+  folha: [folhaItem({ competencia: '2026-09', pagoEm: '2026-10-05' })],
+};
+
+describe('fechamento do dia', () => {
+  it('separa o que entrou do que ficou no fiado', () => {
+    const resumo = resumoFechamento(
+      fechamento({
+        data: HOJE,
+        dinheiro: 10000,
+        pix: 5000,
+        debito: 2000,
+        credito: 3000,
+        fiado: 1500,
+      }),
+    );
+
+    expect(resumo.recebido).toBe(20000);
+    expect(resumo.fiado).toBe(1500);
+    expect(resumo.vendas).toBe(21500);
+    expect(resumo.porForma.pix).toBe(5000);
+  });
+
+  it('calcula o dinheiro que deveria sobrar na gaveta', () => {
+    const dia = fechamento({ data: HOJE, fundoInicial: 10000, dinheiro: 45000 });
+    expect(dinheiroEsperadoEmCaixa(dia, 20000)).toBe(35000);
+    expect(dinheiroEsperadoEmCaixa(dia, 0)).toBe(55000);
+  });
+
+  it('só desconta do caixa o que saiu em dinheiro do próprio caixa', () => {
+    expect(
+      saidasEmDinheiro([
+        despesa({ data: HOJE, valor: 20000, tipo: 'retirada', retiradaDoCaixa: true }),
+        despesa({
+          data: HOJE,
+          valor: 9000,
+          retiradaDoCaixa: true,
+          formaPagamento: 'pix',
+        }),
+        despesa({ data: HOJE, valor: 5000, retiradaDoCaixa: false }),
+      ]),
+    ).toBe(20000);
+  });
+});
+
+describe('situação dos compromissos', () => {
+  it('classifica pelo vencimento', () => {
+    expect(situacaoDoCompromisso(null, '2026-10-14', HOJE)).toBe('atrasado');
+    expect(situacaoDoCompromisso(null, '2026-10-15', HOJE)).toBe('vence-hoje');
+    expect(situacaoDoCompromisso(null, '2026-10-16', HOJE)).toBe('a-vencer');
+    expect(situacaoDoCompromisso('2026-10-01', '2026-10-14', HOJE)).toBe('pago');
+  });
+
+  it('lista o que está em aberto em ordem de vencimento', () => {
+    const pendentes = compromissosPendentes(ACERVO, HOJE);
+
+    expect(pendentes.map((item) => item.vencimento)).toEqual([
+      '2026-10-05',
+      '2026-10-08',
+      '2026-10-15',
+      '2026-10-18',
+      '2026-10-20',
+    ]);
+    expect(pendentes.map((item) => item.origem)).toEqual([
+      'conta',
+      'custo',
+      'conta',
+      'conta',
+      'custo',
+    ]);
+  });
+
+  it('usa o custo da empresa como valor da folha em aberto', () => {
+    const pendente = compromissosPendentes(
+      {
+        ...ACERVO,
+        contas: [],
+        custos: [],
+        folha: [folhaItem({ competencia: '2026-09' })],
+      },
+      HOJE,
+    )[0];
+
+    expect(pendente?.valor).toBe(230400);
+    expect(pendente?.titulo).toBe('Maria');
+    expect(pendente?.vencimento).toBe('2026-10-05');
+  });
+
+  it('separa atrasado, vence hoje e próximo', () => {
+    const resultado = pendencias(ACERVO, HOJE);
+
+    expect(resultado.atrasadas).toHaveLength(2);
+    expect(resultado.vencemHoje).toHaveLength(1);
+    expect(resultado.proximas).toHaveLength(2);
+    expect(resultado.totalEmAberto).toBe(82000);
+    expect(resultado.totalAtrasado).toBe(24000);
+  });
+});
+
+describe('folha de pagamento', () => {
+  it('separa o que o funcionário recebe do que a empresa gasta', () => {
+    const calculo = calcularFolha(
+      folhaItem({ competencia: '2026-09', proventos: 20000, descontos: 5000 }),
+    );
+
+    expect(calculo.bruto).toBe(200000);
+    expect(calculo.liquido).toBe(195000);
+    expect(calculo.custoEmpresa).toBe(250400);
+  });
+
+  it('vence no dia 5 do mês seguinte', () => {
+    expect(vencimentoPadraoFolha('2026-09')).toBe('2026-10-05');
+    expect(vencimentoPadraoFolha('2026-12')).toBe('2027-01-05');
+  });
+});
+
+describe('resumo do mês', () => {
+  const resumo = resumoDoMes('2026-10', ACERVO, HOJE);
+
+  it('soma as entradas por forma de pagamento e ignora outro mês', () => {
+    expect(resumo.porForma).toEqual({
+      dinheiro: 90000,
+      pix: 50000,
+      debito: 15000,
+      credito: 30000,
+    });
+    expect(resumo.recebido).toBe(185000);
+    expect(resumo.fiado).toBe(7000);
+    expect(resumo.vendas).toBe(192000);
+    expect(resumo.diasLancados).toBe(2);
+    expect(resumo.fundoInicial).toBe(40000);
+  });
+
+  it('conta as saídas pela data de pagamento', () => {
+    expect(resumo.saidas.fornecedores).toBe(30000);
+    expect(resumo.saidas.retiradas).toBe(20000);
+    expect(resumo.saidas.despesas).toBe(3500);
+    expect(resumo.saidas.custos).toBe(150000);
+    expect(resumo.saidas.folha).toBe(230400);
+    expect(resumo.saidas.total).toBe(433900);
+  });
+
+  it('fecha o resultado e o que continua em aberto', () => {
+    expect(resumo.resultado).toBe(-241900);
+    expect(resumo.emAberto).toBe(82000);
+    expect(resumo.atrasado).toBe(24000);
+  });
+
+  it('não estoura com mês sem nenhum lançamento', () => {
+    const vazio = resumoDoMes('2026-07', ACERVO, HOJE);
+    expect(vazio.vendas).toBe(0);
+    expect(vazio.saidas.total).toBe(0);
+    expect(vazio.resultado).toBe(0);
+    expect(vazio.margem).toBe(0);
+  });
+
+  it('monta a série dia a dia para o gráfico', () => {
+    const serie = vendasPorDia(ACERVO.fechamentos, '2026-10');
+    expect(serie.map((item) => [item.dia, item.vendas])).toEqual([
+      [14, 115000],
+      [15, 77000],
+    ]);
+  });
+});

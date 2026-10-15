@@ -1,0 +1,99 @@
+# Publica o PWA estático no GitHub Pages só depois de validar o build.
+#
+# Dois jobs de propósito: o de qualidade compila e roda os testes COM o build
+# de produção e publica o dist como artefato; o de deploy baixa exatamente esse
+# artefato em vez de recompilar — o mesmo build que passou na validação do PWA
+# é o que vai ao ar.
+#
+# Antes do primeiro push, habilite o Pages uma vez (repo público no plano Free):
+#   gh api -X POST repos/<owner>/<repo>/pages -f build_type=workflow
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Um run por branch: pushes em sequência cancelam o anterior em vez de acumular.
+# (O job de deploy tem o próprio grupo, sem cancelamento — ver abaixo.)
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Testes, build e validação do PWA
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar o pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Instalar o Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # As regras de dinheiro (centavos, máscara, arredondamento) e as contas do
+      # mês são o que não pode quebrar sem alguém perceber.
+      - name: Conferir os tipos
+        run: pnpm typecheck
+
+      - name: Rodar os testes
+        run: pnpm test
+
+      - name: Build de produção
+        run: pnpm build
+
+      - name: Validar o PWA gerado
+        run: pnpm check-pwa
+
+      - name: Publicar o dist como artefato
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
+
+  # Só publica em push no branch de produção: PR não mexe no site.
+  deploy:
+    name: Publicar no GitHub Pages
+    needs: quality
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    # Deploy não cancela o anterior: dois deploys simultâneos colidem no Pages.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Baixar o dist gerado no job de qualidade
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Configurar o Pages
+        uses: actions/configure-pages@v5
+
+      - name: Empacotar o site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Deploy
+        id: deploy
+        uses: actions/deploy-pages@v4

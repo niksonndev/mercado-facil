@@ -1,0 +1,4 @@
+# O pnpm 10+ não roda scripts de instalação de dependência sem autorização
+# explícita (esbuild precisa do dele para funcionar).
+onlyBuiltDependencies:
+  - esbuild
