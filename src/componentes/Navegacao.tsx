@@ -110,7 +110,10 @@ export function Abas({ rota }: { rota: Rota }) {
 
   return (
     <>
-      <nav className="abas" aria-label="Seções">
+      <nav
+        className={`abas${rapidoAberto ? ' abas--rapido' : ''}`}
+        aria-label="Seções"
+      >
         {esquerda.map((item) => (
           <button
             key={item.caminho}

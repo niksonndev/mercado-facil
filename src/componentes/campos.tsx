@@ -26,17 +26,19 @@ export function Campo({ rotulo, dica, erro, icone, children }: PropsCampo) {
           <Icone nome={icone} tamanho={20} />
         </span>
       )}
-      <label className="campo__rotulo" htmlFor={id}>
-        {rotulo}
-      </label>
+      <span className="campo__textos">
+        <label className="campo__rotulo" htmlFor={id}>
+          {rotulo}
+        </label>
+        {erro ? (
+          <span className="campo__erro" role="alert">
+            {erro}
+          </span>
+        ) : (
+          dica && <span className="campo__dica">{dica}</span>
+        )}
+      </span>
       {children(id)}
-      {erro ? (
-        <span className="campo__erro" role="alert">
-          {erro}
-        </span>
-      ) : (
-        dica && <span className="campo__dica">{dica}</span>
-      )}
     </div>
   );
 }

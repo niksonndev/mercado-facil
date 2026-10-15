@@ -22,6 +22,8 @@ export interface PropsFormularioFechamento {
   /** Pontos de venda cadastrados. Vazio é a loja de um caixa só. */
   pontos: PontoDeVenda[];
   funcionarios: Funcionario[];
+  /** Verdadeiro quando é um dia que ainda não foi salvo. Muda o título. */
+  novo?: boolean;
   aoFechar: () => void;
 }
 
@@ -37,12 +39,13 @@ export function FormularioFechamento({
   registro,
   pontos,
   funcionarios,
+  novo: ehNovo = false,
   aoFechar,
 }: PropsFormularioFechamento) {
   const { rascunho, atualizar, erro, definirErro } = useRascunho(registro);
   const [salvando, definirSalvando] = useState(false);
   const resumo = resumoFechamento(rascunho);
-  const novo = registro.data === '' || registro.criadoEm === '';
+  const novo = ehNovo;
   const ativos = funcionarios.filter((funcionario) => funcionario.ativo);
 
   const trocarResponsavel = (valor: string) => {
@@ -133,7 +136,7 @@ export function FormularioFechamento({
         </div>
       }
     >
-      <Campo rotulo="Dia do movimento" icone="calendario">
+      <Campo rotulo="Dia" icone="calendario">
         {() => (
           <PilulasData
             valor={rascunho.data}
@@ -231,7 +234,7 @@ export function FormularioFechamento({
         </Campo>
       )}
 
-      <Campo rotulo="Observação" icone="caneta">
+      <Campo rotulo="Observação">
         {(id) => (
           <AreaTexto
             id={id}

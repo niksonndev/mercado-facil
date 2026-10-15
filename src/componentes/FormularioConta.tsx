@@ -6,18 +6,17 @@ import { hojeISO } from '../dominio/datas';
 import type { Cartao, Conta, Fornecedor, TipoConta } from '../dominio/tipos';
 import { salvarConta } from '../dados/repositorio';
 import { Anexo } from './Anexo';
-import { Botao, Ficha } from './base';
+import { Ficha } from './base';
 import {
   AreaTexto,
   Campo,
-  Dupla,
+  Chave,
   EntradaData,
   EntradaDinheiro,
   EntradaTexto,
-  Marcar,
   Selecao,
 } from './campos';
-import { Gaveta } from './Gaveta';
+import { Lancamento } from './Lancamento';
 import { useRascunho } from './rascunho';
 
 export interface PropsFormularioConta {
@@ -134,28 +133,33 @@ export function FormularioConta({
   };
 
   return (
-    <Gaveta
-      aberta
-      titulo={novo ? 'Nova conta de fornecedor' : 'Editar conta'}
+    <Lancamento
+      titulo={novo ? 'Nova conta' : 'Editar conta'}
+      rotuloValor={ehFatura ? 'Valor da fatura' : 'Valor da conta'}
+      tom="despesa"
+      valor={rascunho.valor}
+      aoMudarValor={(valor) => atualizar('valor', valor)}
+      aoConfirmar={salvar}
       aoFechar={aoFechar}
-      rodape={
-        <>
-          <Botao onClick={aoFechar}>Cancelar</Botao>
-          <Botao variante="principal" onClick={salvar} disabled={salvando}>
-            {salvando ? 'Salvando…' : 'Salvar conta'}
-          </Botao>
-        </>
+      erro={erro || undefined}
+      salvando={salvando}
+      rotuloConfirmar="Salvar conta"
+      adendo={
+        pago ? (
+          <div className="lanc__total">
+            <Ficha
+              rotulo="Diferença entre valor e pago"
+              valor={formatarDinheiro(
+                (rascunho.valorPago ?? rascunho.valor) - rascunho.valor,
+              )}
+            />
+          </div>
+        ) : undefined
       }
     >
-      {erro && (
-        <p className="campo__erro" role="alert" style={{ marginBottom: 12 }}>
-          {erro}
-        </p>
-      )}
-
-      <Campo rotulo="Tipo de compromisso">
+      <Campo rotulo="Tipo" icone="marcador">
         {() => (
-          <div className="filtros">
+          <div className="pilulas">
             {TIPOS_CONTA.map((tipo) => (
               <button
                 key={tipo.valor}
@@ -171,7 +175,10 @@ export function FormularioConta({
         )}
       </Campo>
 
-      <Campo rotulo={ehFatura ? 'Cartão' : 'Fornecedor'}>
+      <Campo
+        rotulo={ehFatura ? 'Cartão' : 'Fornecedor'}
+        icone={ehFatura ? 'cartao' : 'mercado'}
+      >
         {(id) => (
           <>
             <EntradaTexto
@@ -200,7 +207,7 @@ export function FormularioConta({
         )}
       </Campo>
 
-      <Campo rotulo="Descrição" dica="O que veio nesse pedido">
+      <Campo rotulo="Descrição" icone="caneta">
         {(id) => (
           <EntradaTexto
             id={id}
@@ -211,47 +218,37 @@ export function FormularioConta({
         )}
       </Campo>
 
-      <Campo rotulo="Valor">
+      <Campo
+        rotulo="Emissão"
+        icone="calendario"
+        dica={ehFatura ? 'Data da compra' : 'Data do pedido'}
+      >
         {(id) => (
-          <EntradaDinheiro
+          <EntradaData id={id} valor={rascunho.emissao ?? ''} aoMudar={trocarEmissao} />
+        )}
+      </Campo>
+
+      <Campo
+        rotulo={ehCheque ? 'Bom para' : 'Vencimento'}
+        icone="calendario"
+        dica={
+          ehFatura && rascunho.cartaoNome
+            ? `Pelo fechamento do ${rascunho.cartaoNome}`
+            : undefined
+        }
+      >
+        {(id) => (
+          <EntradaData
             id={id}
-            valor={rascunho.valor}
-            aoMudar={(valor) => atualizar('valor', valor)}
+            valor={rascunho.vencimento}
+            aoMudar={(valor) => atualizar('vencimento', valor || hojeISO())}
           />
         )}
       </Campo>
 
-      <Dupla>
-        <Campo rotulo="Emissão" dica={ehFatura ? 'Data da compra' : 'Data do pedido'}>
-          {(id) => (
-            <EntradaData
-              id={id}
-              valor={rascunho.emissao ?? ''}
-              aoMudar={trocarEmissao}
-            />
-          )}
-        </Campo>
-        <Campo
-          rotulo={ehCheque ? 'Bom para' : 'Vencimento'}
-          dica={
-            ehFatura && rascunho.cartaoNome
-              ? `Pelo fechamento do ${rascunho.cartaoNome}`
-              : undefined
-          }
-        >
-          {(id) => (
-            <EntradaData
-              id={id}
-              valor={rascunho.vencimento}
-              aoMudar={(valor) => atualizar('vencimento', valor || hojeISO())}
-            />
-          )}
-        </Campo>
-      </Dupla>
-
       {ehCheque && (
-        <Dupla>
-          <Campo rotulo="Número do cheque">
+        <>
+          <Campo rotulo="Número do cheque" icone="marcador">
             {(id) => (
               <EntradaTexto
                 id={id}
@@ -261,7 +258,8 @@ export function FormularioConta({
               />
             )}
           </Campo>
-          <Campo rotulo="Banco">
+
+          <Campo rotulo="Banco" icone="mercado">
             {(id) => (
               <EntradaTexto
                 id={id}
@@ -271,13 +269,15 @@ export function FormularioConta({
               />
             )}
           </Campo>
-        </Dupla>
+        </>
       )}
 
-      <Marcar
+      <Chave
         rotulo="Já está pago"
         dica={rotuloTipoConta(rascunho.tipo)}
+        icone="check-circulo"
         marcado={pago}
+        tom="var(--entra)"
         aoMudar={(marcado) =>
           alterar(
             marcado
@@ -289,28 +289,27 @@ export function FormularioConta({
 
       {pago && (
         <>
-          <Dupla>
-            <Campo rotulo="Data do pagamento">
-              {(id) => (
-                <EntradaData
-                  id={id}
-                  valor={rascunho.pagoEm ?? hojeISO()}
-                  aoMudar={(valor) => atualizar('pagoEm', valor || hojeISO())}
-                />
-              )}
-            </Campo>
-            <Campo rotulo="Valor pago" dica="Ajuste se veio juros ou desconto">
-              {(id) => (
-                <EntradaDinheiro
-                  id={id}
-                  valor={rascunho.valorPago ?? rascunho.valor}
-                  aoMudar={(valor) => atualizar('valorPago', valor)}
-                />
-              )}
-            </Campo>
-          </Dupla>
+          <Campo rotulo="Pago em" icone="calendario">
+            {(id) => (
+              <EntradaData
+                id={id}
+                valor={rascunho.pagoEm ?? hojeISO()}
+                aoMudar={(valor) => atualizar('pagoEm', valor || hojeISO())}
+              />
+            )}
+          </Campo>
 
-          <Campo rotulo="Forma de pagamento">
+          <Campo rotulo="Valor pago" icone="carteira" dica="ajuste se veio juros">
+            {(id) => (
+              <EntradaDinheiro
+                id={id}
+                valor={rascunho.valorPago ?? rascunho.valor}
+                aoMudar={(valor) => atualizar('valorPago', valor)}
+              />
+            )}
+          </Campo>
+
+          <Campo rotulo="Forma de pagamento" icone="carteira">
             {(id) => (
               <Selecao
                 id={id}
@@ -323,13 +322,6 @@ export function FormularioConta({
               />
             )}
           </Campo>
-
-          <div className="cartao" style={{ background: 'var(--superficie-2)' }}>
-            <Ficha
-              rotulo="Diferença entre valor e pago"
-              valor={formatarDinheiro((rascunho.valorPago ?? rascunho.valor) - rascunho.valor)}
-            />
-          </div>
         </>
       )}
 
@@ -348,6 +340,6 @@ export function FormularioConta({
           />
         )}
       </Campo>
-    </Gaveta>
+    </Lancamento>
   );
 }

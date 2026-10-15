@@ -5,19 +5,18 @@ import { formatarDinheiro } from '../dominio/dinheiro';
 import type { CategoriaCusto, CustoOperacional } from '../dominio/tipos';
 import { salvarCusto } from '../dados/repositorio';
 import { Anexo } from './Anexo';
-import { Botao, Ficha } from './base';
+import { Ficha } from './base';
 import {
   AreaTexto,
   Campo,
-  Dupla,
+  Chave,
   EntradaData,
   EntradaDinheiro,
   EntradaMes,
   EntradaTexto,
-  Marcar,
   Selecao,
 } from './campos';
-import { Gaveta } from './Gaveta';
+import { Lancamento } from './Lancamento';
 import { useRascunho } from './rascunho';
 
 export interface PropsFormularioCusto {
@@ -74,26 +73,31 @@ export function FormularioCusto({ registro, aoFechar }: PropsFormularioCusto) {
   };
 
   return (
-    <Gaveta
-      aberta
-      titulo={novo ? 'Novo custo operacional' : 'Editar custo'}
+    <Lancamento
+      titulo={novo ? 'Novo custo' : 'Editar custo'}
+      rotuloValor="Valor previsto"
+      tom="despesa"
+      valor={rascunho.valorPrevisto}
+      aoMudarValor={(valor) => atualizar('valorPrevisto', valor)}
+      aoConfirmar={salvar}
       aoFechar={aoFechar}
-      rodape={
-        <>
-          <Botao onClick={aoFechar}>Cancelar</Botao>
-          <Botao variante="principal" onClick={salvar} disabled={salvando}>
-            {salvando ? 'Salvando…' : 'Salvar custo'}
-          </Botao>
-        </>
+      erro={erro || undefined}
+      salvando={salvando}
+      rotuloConfirmar="Salvar custo"
+      adendo={
+        pago ? (
+          <div className="lanc__total">
+            <Ficha
+              rotulo="Diferença entre previsto e pago"
+              valor={formatarDinheiro(
+                (rascunho.valorPago ?? rascunho.valorPrevisto) - rascunho.valorPrevisto,
+              )}
+            />
+          </div>
+        ) : undefined
       }
     >
-      {erro && (
-        <p className="campo__erro" role="alert" style={{ marginBottom: 12 }}>
-          {erro}
-        </p>
-      )}
-
-      <Campo rotulo="Categoria">
+      <Campo rotulo="Categoria" icone="marcador">
         {(id) => (
           <Selecao
             id={id}
@@ -107,7 +111,7 @@ export function FormularioCusto({ registro, aoFechar }: PropsFormularioCusto) {
         )}
       </Campo>
 
-      <Campo rotulo="Descrição">
+      <Campo rotulo="Descrição" icone="caneta">
         {(id) => (
           <EntradaTexto
             id={id}
@@ -118,47 +122,39 @@ export function FormularioCusto({ registro, aoFechar }: PropsFormularioCusto) {
         )}
       </Campo>
 
-      <Dupla>
-        <Campo rotulo="Competência" dica="Mês a que se refere">
-          {(id) => (
-            <EntradaMes
-              id={id}
-              valor={rascunho.competencia}
-              aoMudar={(valor) => atualizar('competencia', valor || mesAtual())}
-            />
-          )}
-        </Campo>
-        <Campo rotulo="Vencimento">
-          {(id) => (
-            <EntradaData
-              id={id}
-              valor={rascunho.vencimento}
-              aoMudar={(valor) => atualizar('vencimento', valor || hojeISO())}
-            />
-          )}
-        </Campo>
-      </Dupla>
-
-      <Campo rotulo="Valor previsto">
+      <Campo rotulo="Competência" icone="calendario" dica="mês a que se refere">
         {(id) => (
-          <EntradaDinheiro
+          <EntradaMes
             id={id}
-            valor={rascunho.valorPrevisto}
-            aoMudar={(valor) => atualizar('valorPrevisto', valor)}
+            valor={rascunho.competencia}
+            aoMudar={(valor) => atualizar('competencia', valor || mesAtual())}
           />
         )}
       </Campo>
 
-      <Marcar
-        rotulo="Custo que se repete todo mês"
+      <Campo rotulo="Vencimento" icone="calendario">
+        {(id) => (
+          <EntradaData
+            id={id}
+            valor={rascunho.vencimento}
+            aoMudar={(valor) => atualizar('vencimento', valor || hojeISO())}
+          />
+        )}
+      </Campo>
+
+      <Chave
+        rotulo="Repete todo mês"
         dica="a tela oferece repetir na próxima competência"
+        icone="repetir"
         marcado={rascunho.recorrente}
         aoMudar={(marcado) => atualizar('recorrente', marcado)}
       />
 
-      <Marcar
+      <Chave
         rotulo="Já está pago"
+        icone="check-circulo"
         marcado={pago}
+        tom="var(--entra)"
         aoMudar={(marcado) =>
           alterar(
             marcado
@@ -169,8 +165,8 @@ export function FormularioCusto({ registro, aoFechar }: PropsFormularioCusto) {
       />
 
       {pago && (
-        <Dupla>
-          <Campo rotulo="Data do pagamento">
+        <>
+          <Campo rotulo="Pago em" icone="calendario">
             {(id) => (
               <EntradaData
                 id={id}
@@ -179,7 +175,8 @@ export function FormularioCusto({ registro, aoFechar }: PropsFormularioCusto) {
               />
             )}
           </Campo>
-          <Campo rotulo="Valor pago">
+
+          <Campo rotulo="Valor pago" icone="carteira">
             {(id) => (
               <EntradaDinheiro
                 id={id}
@@ -188,12 +185,8 @@ export function FormularioCusto({ registro, aoFechar }: PropsFormularioCusto) {
               />
             )}
           </Campo>
-        </Dupla>
-      )}
 
-      {pago && (
-        <>
-          <Campo rotulo="Forma de pagamento">
+          <Campo rotulo="Forma de pagamento" icone="carteira">
             {(id) => (
               <Selecao
                 id={id}
@@ -206,13 +199,6 @@ export function FormularioCusto({ registro, aoFechar }: PropsFormularioCusto) {
               />
             )}
           </Campo>
-
-          <div className="cartao" style={{ background: 'var(--superficie-2)' }}>
-            <Ficha
-              rotulo="Diferença entre previsto e pago"
-              valor={formatarDinheiro((rascunho.valorPago ?? rascunho.valorPrevisto) - rascunho.valorPrevisto)}
-            />
-          </div>
         </>
       )}
 
@@ -231,6 +217,6 @@ export function FormularioCusto({ registro, aoFechar }: PropsFormularioCusto) {
           />
         )}
       </Campo>
-    </Gaveta>
+    </Lancamento>
   );
 }

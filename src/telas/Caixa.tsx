@@ -43,6 +43,7 @@ export function Caixa() {
   const funcionarios = useFuncionarios() ?? [];
   const [editando, definirEditando] = useState<FechamentoCaixa | null>(null);
   const [abrirNovo] = useState(() => abaAtual() === 'novo');
+  const [novoAberto, definirNovoAberto] = useState(true);
   const [editandoPonto, definirEditandoPonto] = useState<PontoDeVenda | null>(null);
   const [competencia, definirCompetencia] = useState<Competencia>(mesAtual);
   const [filtro, definirFiltro] = useState<string>('todos');
@@ -101,6 +102,7 @@ export function Caixa() {
 
   const abrirDia = (data: string, pontoId: Id | null) => {
     const existente = porChave.get(chaveFechamento({ data, pontoId }));
+    definirNovoAberto(!existente);
     definirEditando(existente ?? novoFechamento(fechamentoVazio(data, pontoId)));
   };
 
@@ -236,7 +238,10 @@ export function Caixa() {
                   }`}
                   detalhe={detalhe}
                   valor={formatarDinheiro(dia.vendas)}
-                  aoAbrir={() => definirEditando(fechamento)}
+                  aoAbrir={() => {
+                    definirNovoAberto(false);
+                    definirEditando(fechamento);
+                  }}
                   acoes={
                     <BotaoExcluir
                       descricao={`o fechamento de ${formatarDataComDia(fechamento.data)}`}
@@ -295,6 +300,7 @@ export function Caixa() {
           registro={editando}
           pontos={ativos}
           funcionarios={funcionarios}
+          novo={novoAberto}
           aoFechar={() => definirEditando(null)}
         />
       )}

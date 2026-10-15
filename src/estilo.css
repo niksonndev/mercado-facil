@@ -631,7 +631,8 @@ textarea {
 
 .area {
   min-height: 76px;
-  resize: vertical;
+  /* No celular a alça de redimensionar só atrapalha: o campo já nasce no tamanho certo. */
+  resize: none;
 }
 
 .selecao {
@@ -1321,16 +1322,77 @@ textarea {
   margin-bottom: 0;
 }
 
+/*
+ * Só as linhas de pílulas quebram para duas linhas (rótulo em cima, pílulas
+ * embaixo): nas outras, o controle fica à direita do rótulo, como no modelo.
+ */
+.campo--linha:has(> .pilulas) {
+  flex-wrap: wrap;
+}
+
 .campo--linha:last-child {
   border-bottom: 0;
 }
 
+/* Rótulo e dica juntos, na coluna da esquerda. */
+.campo__textos {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.campo--linha > .campo__textos {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/*
+ * A Chave (ligar/desligar) traz o rótulo direto na linha, sem o invólucro dos
+ * textos: as duas formas precisam crescer igual para o controle ir à direita.
+ */
 .campo--linha > .campo__rotulo {
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
   font-size: 1rem;
   font-weight: 600;
   color: var(--texto);
+}
+
+.campo--linha > .campo__textos > .campo__rotulo {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--texto);
+}
+
+/* O controle fica com a direita da linha; o rótulo, com o resto. */
+.campo--linha > .entrada,
+.campo--linha > .selecao,
+.campo--linha > .entrada--moeda,
+.campo--linha > .area {
+  width: auto;
+  flex: 0 0 44%;
+  min-width: 0;
+}
+
+.campo--linha > .pilulas,
+.campo--linha > div {
+  flex: 0 1 auto;
+  width: auto;
+  min-width: 0;
+}
+
+/*
+ * Pílulas (Hoje/Ontem/Outros, tipo de saída) são largas demais para dividir a
+ * linha: descem inteiras para a linha de baixo, alinhadas à direita.
+ */
+.campo--linha > .pilulas {
+  flex: 1 1 100%;
+  justify-content: flex-end;
+}
+
+.campo--linha .entrada--moeda input {
+  text-align: right;
 }
 
 .campo--linha .campo__dica,
@@ -1473,6 +1535,11 @@ textarea {
   outline: none;
 }
 
+.lanc__valor input::placeholder {
+  /* Sem isto o "0,00" sai cinza e some no cabeçalho colorido. */
+  color: rgba(255, 255, 255, 0.6);
+}
+
 .lanc__valor-texto {
   flex: 1;
   min-width: 0;
@@ -1588,6 +1655,16 @@ textarea {
 
 .aba__circulo--aberto {
   transform: rotate(45deg);
+}
+
+/*
+ * Com o leque aberto, só o + sobe acima do véu (z-index 59): a barra continua
+ * escurecida e o + vira o ✕ que fecha o menu. Sem a classe, o + ficaria por
+ * cima da folha de lançamento, que vive no z-index 60.
+ */
+.abas--rapido .aba__circulo {
+  position: relative;
+  z-index: 61;
 }
 
 /* --------------------------------------------------- atalho de lançamento */

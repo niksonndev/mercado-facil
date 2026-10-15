@@ -183,7 +183,7 @@ export function FormularioDespesa({ registro, aoFechar }: PropsFormularioDespesa
         aoMudar={(marcado) => atualizar('fixa', marcado)}
       />
 
-      <Campo rotulo="Observação" icone="caneta">
+      <Campo rotulo="Observação">
         {(id) => (
           <AreaTexto
             id={id}

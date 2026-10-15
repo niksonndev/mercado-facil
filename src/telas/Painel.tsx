@@ -57,6 +57,7 @@ export function Painel() {
   const [recebendo, definirRecebendo] = useState<FechamentoCaixa | null>(null);
   const [pagando, definirPagando] = useState<CompromissoPendente | null>(null);
   const [verValores, definirVerValores] = useState(true);
+  const [novoAberto, definirNovoAberto] = useState(false);
 
   /** O olho do topo esconde os números: quem mostra a tela para outra pessoa agradece. */
   const mostrar = (valor: Centavos) => (verValores ? formatarDinheiro(valor) : 'R$ ••••');
@@ -73,11 +74,11 @@ export function Painel() {
   const compromissos = [...acervo.contas.map((c) => c), ...acervo.custos, ...acervo.folha];
 
   /** Abre o fechamento do caixa informado, ou começa um novo nele. */
-  const abrirCaixa = (pontoId: Id | null) =>
-    definirEditando(
-      fechamentosHoje.find((fechamento) => fechamento.pontoId === pontoId) ??
-        novoFechamento(fechamentoVazio(hoje, pontoId)),
-    );
+  const abrirCaixa = (pontoId: Id | null) => {
+    const existente = fechamentosHoje.find((fechamento) => fechamento.pontoId === pontoId);
+    definirNovoAberto(!existente);
+    definirEditando(existente ?? novoFechamento(fechamentoVazio(hoje, pontoId)));
+  };
 
   /** Caixa ativo que ainda não fechou hoje: é o trabalho que falta. */
   const caixaAbertoHoje =
@@ -398,6 +399,7 @@ export function Painel() {
           registro={editando}
           pontos={ativos}
           funcionarios={funcionarios}
+          novo={novoAberto}
           aoFechar={() => definirEditando(null)}
         />
       )}

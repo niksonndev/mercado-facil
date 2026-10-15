@@ -44,7 +44,8 @@ export type NomeIcone =
   | 'chevron'
   | 'check-circulo'
   | 'pessoa'
-  | 'mercado';
+  | 'mercado'
+  | 'cartao';
 
 const TRACOS: Record<NomeIcone, string> = {
   painel: 'M4 11.2 12 4.5l8 6.7M6 10v9.5h12V10',
@@ -89,6 +90,7 @@ const TRACOS: Record<NomeIcone, string> = {
   'check-circulo': 'M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17ZM8 12.2l2.8 2.8L16 9.8',
   pessoa: 'M12 11.5a3.6 3.6 0 1 0 0-7.2 3.6 3.6 0 0 0 0 7.2ZM4.5 20.5c0-3.9 3.4-7 7.5-7s7.5 3.1 7.5 7',
   mercado: 'M4 9.5h16l-1.5-5h-13zM6 9.5v11h12v-11M10 20.5v-5.5h4v5.5',
+  cartao: 'M3 7.5h18v9H3zM3 11h18M6.5 14h3',
 };
 
 export interface PropsIcone {
