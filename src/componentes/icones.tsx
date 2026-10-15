@@ -13,6 +13,7 @@ export type NomeIcone =
   | 'folha'
   | 'fornecedores'
   | 'relatorios'
+  | 'dre'
   | 'dados'
   | 'mais'
   | 'mais-circulo'
@@ -23,6 +24,7 @@ export type NomeIcone =
   | 'brilho'
   | 'enviar'
   | 'baixar'
+  | 'imprimir'
   | 'fechar'
   | 'alerta'
   | 'mercado';
@@ -37,6 +39,7 @@ const TRACOS: Record<NomeIcone, string> = {
   fornecedores:
     'M2.5 6.5h10v9h-10zM12.5 10h4l3.5 3.5v2h-7.5M6 18.5a1.6 1.6 0 1 0 0-3.2 1.6 1.6 0 0 0 0 3.2ZM16.5 18.5a1.6 1.6 0 1 0 0-3.2 1.6 1.6 0 0 0 0 3.2Z',
   relatorios: 'M4 20V4M4 20h16M8.5 20v-6M13 20V9M17.5 20v-8.5',
+  dre: 'M4 19.5h16M6 15.5 10 11l3 3 5.5-6M15 8h3.5M18.5 8v3.5',
   dados: 'M12 3.5c4.4 0 8 1.3 8 3v11c0 1.7-3.6 3-8 3s-8-1.3-8-3v-11c0-1.7 3.6-3 8-3ZM4 6.5c0 1.7 3.6 3 8 3s8-1.3 8-3M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3',
   mais: 'M12 6v12M6 12h12',
   'mais-circulo': 'M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17ZM12 8.5v7M8.5 12h7',
@@ -48,6 +51,7 @@ const TRACOS: Record<NomeIcone, string> = {
     'M12 7.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9ZM12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.4 5.4l1.4 1.4M17.2 17.2l1.4 1.4M18.6 5.4l-1.4 1.4M6.8 17.2l-1.4 1.4',
   enviar: 'M21 3 10.5 13.5M21 3l-6.5 18-4-8.5-8.5-4z',
   baixar: 'M12 3.5v11M8 10.5l4 4 4-4M4.5 20.5h15',
+  imprimir: 'M7 8.5V3.5h10V8.5M5 8.5h14v8h-3.5M6 16.5H5M8.5 16.5v4h7v-4',
   fechar: 'M6 6l12 12M18 6 6 18',
   alerta: 'M12 4 2.5 20.5h19zM12 10v4.5M12 17.5h.01',
   mercado: 'M4 9.5h16l-1.5-5h-13zM6 9.5v11h12v-11M10 20.5v-5.5h4v5.5',

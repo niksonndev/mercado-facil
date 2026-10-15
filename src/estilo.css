@@ -917,6 +917,121 @@ textarea {
   white-space: nowrap;
 }
 
+/* ---------------------------------------------------------------- DRE */
+
+.dre__grupo {
+  padding: 12px 0 2px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--suave);
+}
+
+.dre__grupo:first-child {
+  padding-top: 0;
+}
+
+.dre__linha {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--borda);
+  font-size: 0.88rem;
+}
+
+.dre__linha:last-child {
+  border-bottom: 0;
+}
+
+.dre__rotulo {
+  flex: 1;
+  min-width: 0;
+}
+
+.dre__valor {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Valores dentro de um bloco: indentados e em tom mais suave. */
+.dre__linha--filha {
+  padding-left: 16px;
+  color: var(--suave);
+  font-size: 0.84rem;
+}
+
+.dre__linha--filha .dre__valor {
+  color: var(--texto);
+}
+
+.dre__linha--subtotal {
+  border-top: 1px solid var(--borda-forte);
+  margin-top: 2px;
+  padding-top: 9px;
+  font-weight: 650;
+}
+
+.dre__linha--total {
+  border-top: 2px solid var(--borda-forte);
+  margin-top: 4px;
+  padding-top: 11px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.dre__linha--total .dre__rotulo,
+.dre__linha--total .dre__valor {
+  font-weight: 700;
+}
+
+/* -------------------------------------------------------------- impressão */
+
+@media print {
+  /* Papel claro e sem o cromo do app: só o conteúdo da tela. */
+  :root,
+  html[data-tema='claro'] {
+    --bg: #ffffff;
+    --superficie: #ffffff;
+    --superficie-2: #f7f9fc;
+    --borda: #e3e8ef;
+    --borda-forte: #cfd7e3;
+    --texto: #131a24;
+    --suave: #647081;
+  }
+
+  body {
+    overflow: visible;
+  }
+
+  .app {
+    display: block;
+    height: auto;
+  }
+
+  .topo,
+  .menu,
+  .abas,
+  .filtros,
+  .nao-imprimir {
+    display: none !important;
+  }
+
+  .tela {
+    overflow: visible;
+    padding: 0;
+    max-width: none;
+  }
+
+  .cartao {
+    break-inside: avoid;
+    box-shadow: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;

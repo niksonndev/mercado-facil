@@ -75,6 +75,13 @@ export const ROTAS: Rota[] = [
     grupo: 'sistema',
   },
   {
+    caminho: 'dre',
+    titulo: 'DRE do mês',
+    curto: 'DRE',
+    icone: 'dre',
+    grupo: 'sistema',
+  },
+  {
     caminho: 'dados',
     titulo: 'Dados e backup',
     curto: 'Dados',

@@ -10,6 +10,7 @@ import { Custos } from './telas/Custos';
 import { Folha } from './telas/Folha';
 import { Fornecedores } from './telas/Fornecedores';
 import { Relatorios } from './telas/Relatorios';
+import { Dre } from './telas/Dre';
 import { Dados } from './telas/Dados';
 
 function Tela({ caminho }: { caminho: string }) {
@@ -28,6 +29,8 @@ function Tela({ caminho }: { caminho: string }) {
       return <Fornecedores />;
     case 'relatorios':
       return <Relatorios />;
+    case 'dre':
+      return <Dre />;
     case 'dados':
       return <Dados />;
     default:
