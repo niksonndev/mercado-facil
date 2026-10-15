@@ -21,6 +21,7 @@ primeira visita.
 | **Folha** | Cadastro de funcionários e folha mês a mês, separando o líquido do funcionário do custo da empresa (FGTS e encargos). |
 | **Fornecedores** | Cadastro simples, com o total em aberto de cada um. |
 | **Relatórios** | Resultado do mês, vendas por dia, de onde veio e para onde foi o dinheiro, e o que continua em aberto. |
+| **DRE do mês** | Lucro ou prejuízo de verdade: vendas, taxas de cartão e impostos, custo da mercadoria vendida, custos, folha e retiradas, com margens e opção de imprimir. |
 | **Dados** | Exportar e restaurar backup em JSON, carregar um mês de exemplo e apagar tudo. |
 
 ## Como rodar
@@ -51,6 +52,12 @@ pnpm preview      # serve o build: aqui o service worker é exercitado de verdad
   a vencer, pago), totais do dia e resumo do mês são calculados na leitura em
   `src/dominio/calculos.ts`, que é puro e testado. Não existe campo que possa
   ficar dessincronizado com os lançamentos.
+- **Comprar mercadoria não é despesa.** No DRE, a compra paga a fornecedor não
+  entra: o dinheiro virou estoque. Quem mede o gasto da mercadoria que saiu é o
+  CMV, número que só a pessoa tem — por isso ele é informado à mão, um registro
+  por competência, e o DRE reclama enquanto faltar. É também por isso que o
+  resultado do DRE não bate com o de Relatórios: um é lucro, o outro é dinheiro
+  na gaveta.
 - **Navegação por hash** (`#/contas`): o GitHub Pages não reescreve rota, e o
   link direto e o botão voltar do celular precisam funcionar de qualquer jeito.
 - **Formas de pagamento** viram cores em `src/dominio/categorias.ts`; etiqueta,
