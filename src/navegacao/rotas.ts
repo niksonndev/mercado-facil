@@ -24,8 +24,8 @@ export const ROTAS: Rota[] = [
   },
   {
     caminho: 'caixa',
-    titulo: 'Fechamento de caixa',
-    curto: 'Caixa',
+    titulo: 'Apurado do dia',
+    curto: 'Apurado',
     icone: 'caixa',
     grupo: 'movimento',
     naBarra: true,

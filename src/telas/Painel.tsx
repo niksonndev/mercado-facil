@@ -146,17 +146,17 @@ export function Painel() {
         </div>
       </div>
 
-      {/* Fechamento do dia: é o primeiro trabalho de todo dia. */}
+      {/* Apurado do dia: é o primeiro trabalho de todo dia. */}
       <Cartao
         destaque
-        titulo={`Caixa de ${formatarDataComDia(hoje)}`}
+        titulo={`Apurado de ${formatarDataComDia(hoje)}`}
         acao={
           <>
             {caixaAbertoHoje && (
               <Botao pequeno onClick={() => abrirCaixa(caixaAbertoHoje.id)}>
                 {fechamentosHoje.length === 0
-                  ? 'Fechar o dia'
-                  : `Fechar ${caixaAbertoHoje.nome}`}
+                  ? 'Lançar o apurado'
+                  : `Lançar ${caixaAbertoHoje.nome}`}
               </Botao>
             )}
             {fechamentosHoje.length > 0 && (
@@ -170,7 +170,7 @@ export function Painel() {
             )}
             {fechamentosHoje.length === 0 && ativos.length === 0 && (
               <Botao pequeno variante="principal" onClick={() => abrirCaixa(null)}>
-                Fechar o dia
+                Lançar o apurado
               </Botao>
             )}
           </>
@@ -215,7 +215,7 @@ export function Painel() {
           </>
         ) : (
           <Vazio
-            titulo="O dia ainda não foi fechado"
+            titulo="O apurado de hoje ainda não foi lançado"
             descricao="Anote o troco que começou o caixa e o que foi vendido em cada forma de pagamento. Leva menos de dois minutos."
           />
         )}
@@ -252,7 +252,7 @@ export function Painel() {
           <Estatistica
             rotulo="Vendas"
             valor={formatarDinheiro(resumo.vendas)}
-            detalhe={`${resumo.diasLancados} dia(s) fechado(s)`}
+            detalhe={`${resumo.diasLancados} dia(s) com apurado`}
           />
           <Estatistica
             rotulo="Entrou no caixa"

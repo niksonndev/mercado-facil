@@ -13,7 +13,7 @@ export const CORES_LANCAMENTO: Record<TomLancamento, string> = {
 };
 
 export interface PropsLancamento {
-  /** "Nova despesa", "Fechar o dia"... */
+  /** "Nova despesa", "Lançar o apurado"... */
   titulo: string;
   /** "Valor da despesa", "Fundo de caixa"... */
   rotuloValor: string;
@@ -32,7 +32,7 @@ export interface PropsLancamento {
   /**
    * Valor do topo só para ler.
    *
-   * É o caso do fechamento de caixa: o número grande é o total vendido no dia,
+   * É o caso do apurado do dia: o número grande é o total vendido no dia,
    * que soma as formas de pagamento e não se digita.
    */
   somenteLeitura?: boolean;

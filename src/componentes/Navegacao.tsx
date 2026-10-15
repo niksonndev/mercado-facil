@@ -52,7 +52,7 @@ export function Menu({ rota }: { rota: Rota }) {
  */
 const ATALHOS: Array<{ rotulo: string; icone: NomeIcone; caminho: string; posicao: { left: string; top: string } }> = [
   { rotulo: 'Despesa', icone: 'despesas', caminho: 'despesas/novo', posicao: { left: '14%', top: '64%' } },
-  { rotulo: 'Fechar caixa', icone: 'caixa', caminho: 'caixa/novo', posicao: { left: '30%', top: '14%' } },
+  { rotulo: 'Apurado do dia', icone: 'caixa', caminho: 'caixa/novo', posicao: { left: '30%', top: '14%' } },
   { rotulo: 'Boleto', icone: 'contas', caminho: 'contas/novo', posicao: { left: '70%', top: '14%' } },
   { rotulo: 'Custo fixo', icone: 'custos', caminho: 'custos/novo', posicao: { left: '86%', top: '64%' } },
 ];

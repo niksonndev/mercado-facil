@@ -18,7 +18,7 @@ export function Dados() {
   if (!acervo) return <Vazio titulo="Carregando…" />;
 
   const contagens = [
-    ['Dias fechados', acervo.fechamentos.length],
+    ['Dias apurados', acervo.fechamentos.length],
     ['Contas de fornecedor', acervo.contas.length],
     ['Despesas', acervo.despesas.length],
     ['Custos operacionais', acervo.custos.length],
@@ -34,7 +34,7 @@ export function Dados() {
       const backup = await montarBackup();
       await baixarBackup();
       definirMensagem(
-        `Backup gerado com ${totalLancamentos} lançamento(s) e ${backup.dados.fechamentos.length} dia(s) fechado(s).`,
+        `Backup gerado com ${totalLancamentos} lançamento(s) e ${backup.dados.fechamentos.length} dia(s) com apurado.`,
       );
     } finally {
       definirOcupado(false);

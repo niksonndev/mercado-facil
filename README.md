@@ -1,7 +1,7 @@
 # Mercado Fácil
 
-Gestão financeira do mercadinho de bairro. PWA offline-first: fecha o caixa do
-dia, não deixa boleto de fornecedor passar e mostra o que sobrou no mês.
+Gestão financeira do mercadinho de bairro. PWA offline-first: lança o apurado
+do dia, não deixa boleto de fornecedor passar e mostra o que sobrou no mês.
 
 **App publicado:** https://niksonndev.github.io/mercado-facil/
 
@@ -13,8 +13,8 @@ primeira visita.
 
 | Seção | Para quê |
 | --- | --- |
-| **Painel** | O que fazer hoje: fechar o caixa, o que venceu, quanto entrou e quanto saiu no mês. |
-| **Caixa** | Fundo de caixa (troco do início do dia) e fechamento do dia por dinheiro, PIX, débito, crédito e fiado. Um fechamento por dia e por ponto de venda (caixa 1, caixa 2), cada um com o funcionário que respondeu por ele. Mostra o que deveria estar na gaveta e avisa os dias do mês que ficaram sem fechamento. |
+| **Painel** | O que fazer hoje: lançar o apurado do dia, o que venceu, quanto entrou e quanto saiu no mês. |
+| **Apurado do dia** | Fundo de caixa (troco do início do dia) e a receita do dia por dinheiro, PIX, débito, crédito e fiado. Um apurado por dia e por ponto de venda (caixa 1, caixa 2), cada um com o funcionário que respondeu por ele. Mostra o que deveria estar na gaveta e avisa os dias do mês que ficaram sem apurado. |
 | **Contas** | Boletos de fornecedor (vencimento, valor, fornecedor), cheques pré-datados (número, banco, bom para), compras à vista e faturas do cartão da empresa (vencimento calculado pelo fechamento do cartão). Baixa de pagamento com data, valor e forma, e foto do boleto anexada. |
 | **Despesas** | Retirada de caixa e pagamentos diversos, com a marcação de "saiu do dinheiro da gaveta" que entra na conferência do caixa, a marcação de despesa fixa (que a tela repete no mês seguinte) e a foto do comprovante anexada. |
 | **Custos** | Aluguel, energia, água, internet, contabilidade e afins, por competência, com repetição automática dos recorrentes para o mês seguinte. |
@@ -61,13 +61,17 @@ pnpm preview      # serve o build: aqui o service worker é exercitado de verdad
   na gaveta.
 - **Navegação por hash** (`#/contas`): o GitHub Pages não reescreve rota, e o
   link direto e o botão voltar do celular precisam funcionar de qualquer jeito.
-- **Um fechamento por dia e por ponto de venda.** O mercadinho de um caixa só
-  fecha o dia sem cadastrar nada: o fechamento fica com ponto nulo e a tela o
-  chama de "caixa único". Quem tem dois caixas cadastra os pontos e fecha cada
-  um no seu lançamento, com o responsável daquele dia. A chave do lançamento é
-  `data|ponto`, e é ela que impede o segundo fechamento do mesmo caixa no mesmo
-  dia. Apagar um ponto não apaga o histórico: os fechamentos antigos mostram
-  "caixa removido".
+- **Um apurado por dia e por ponto de venda.** O mercadinho de um caixa só lança
+  o dia sem cadastrar nada: o apurado fica com ponto nulo e a tela o chama de
+  "caixa único". Quem tem dois caixas cadastra os pontos e lança cada um no seu
+  apurado, com o responsável daquele dia. A chave do lançamento é `data|ponto`,
+  e é ela que impede o segundo apurado do mesmo caixa no mesmo dia. Apagar um
+  ponto não apaga o histórico: os apurados antigos mostram "caixa removido".
+- **"Apurado do dia" é o nome na tela, não "fechamento de caixa"** (pedido do
+  cliente, 15/10/2026). Quem fecha o caixa é o ERP dele, que faz a movimentação;
+  o app só recebe aqueles números, e o que ele guarda é a receita do dia. Os
+  textos falam em lançar e corrigir o apurado; no código continuam o tipo
+  `FechamentoCaixa` e a tabela `fechamentos`, que é o nome que já estava lá.
 - **A venda no crédito entra no caixa no dia em que foi vendida; o dinheiro da
   máquina entra na conta na data prevista.** São duas perguntas diferentes, e o
   app responde as duas: o relatório mostra o que foi vendido, e a agenda "a

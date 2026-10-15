@@ -28,7 +28,10 @@ export interface PropsFormularioFechamento {
 }
 
 /**
- * Fechamento de um dia, na folha verde de entrada.
+ * Apurado de um dia, na folha verde de entrada.
+ *
+ * A tela chama de "apurado do dia" o que o cliente lê no ERP dele: a receita
+ * do dia. Quem fecha o caixa é o ERP, o app só guarda os números.
  *
  * O valor grande do topo é o total vendido no dia, que soma as formas de
  * pagamento — por isso ele não se digita, se lê. Quando a loja tem mais de um
@@ -56,7 +59,7 @@ export function FormularioFechamento({
 
   const salvar = async () => {
     if (!rascunho.data) {
-      definirErro('Informe a data do fechamento.');
+      definirErro('Informe a data do apurado.');
       return;
     }
 
@@ -71,7 +74,7 @@ export function FormularioFechamento({
 
       if (conflito) {
         definirErro(
-          `${rotuloPonto(pontos, conflito.pontoId)} já fechou ${formatarDataComDia(
+          `${rotuloPonto(pontos, conflito.pontoId)} já lançou o apurado de ${formatarDataComDia(
             rascunho.data,
           )}. Abra o dia na lista para corrigir.`,
         );
@@ -87,7 +90,7 @@ export function FormularioFechamento({
 
   return (
     <Lancamento
-      titulo={novo ? 'Fechar o dia' : 'Editar fechamento'}
+      titulo={novo ? 'Lançar o apurado' : 'Editar apurado'}
       rotuloValor="Vendas do dia"
       tom="receita"
       valor={resumo.vendas}
@@ -97,7 +100,7 @@ export function FormularioFechamento({
       aoFechar={aoFechar}
       erro={erro || undefined}
       salvando={salvando}
-      rotuloConfirmar="Salvar fechamento"
+      rotuloConfirmar="Salvar apurado"
       adendo={
         <div className="lanc__total">
           <Ficha

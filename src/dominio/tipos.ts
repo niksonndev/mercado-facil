@@ -47,7 +47,14 @@ export type PrazoCredito =
   | '31-dias'
   | 'mes-seguinte';
 
-/** Fechamento de caixa de um dia (o que o mercadinho anota à noite). */
+/**
+ * O que o mercadinho anota no fim do dia: a receita do dia, por forma de
+ * pagamento, mais o fundo que começou o caixa.
+ *
+ * Na tela isso se chama **"apurado do dia"**, que é a palavra do empresário: o
+ * fechamento de caixa quem faz é o ERP dele, o app só guarda aqueles números.
+ * O nome do tipo continua `FechamentoCaixa` porque é o que o código já lê.
+ */
 export interface FechamentoCaixa {
   id: Id;
   /** Dia do movimento. Existe um fechamento por data e por ponto de venda. */

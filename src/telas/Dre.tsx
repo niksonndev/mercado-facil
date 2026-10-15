@@ -245,7 +245,7 @@ export function Dre() {
       <Cartao titulo="Indicadores">
         <Ficha rotulo="Margem bruta (sobre a receita líquida)" valor={porCento(resultado.margemBruta)} />
         <Ficha rotulo="Margem líquida (sobre a receita)" valor={porCento(resultado.margemLiquida)} />
-        <Ficha rotulo="Dias com caixa fechado" valor={String(resultado.diasLancados)} />
+        <Ficha rotulo="Dias com apurado lançado" valor={String(resultado.diasLancados)} />
         <Ficha
           rotulo="Compras pagas a fornecedores"
           valor={formatarDinheiro(resultado.comprasFornecedores)}

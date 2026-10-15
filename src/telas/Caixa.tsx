@@ -140,14 +140,14 @@ export function Caixa() {
           icone="mais-circulo"
           onClick={() => abrirDia(hoje, pontoDoDia)}
         >
-          {fechamentoDeHoje ? 'Corrigir o caixa de hoje' : 'Fechar o dia de hoje'}
+          {fechamentoDeHoje ? 'Corrigir o apurado de hoje' : 'Lançar o apurado de hoje'}
         </Botao>
       </div>
 
       {semFechamento.length > 0 && (
         <Aviso tom="alerta">
           {semFechamento.length === 1
-            ? '1 dia do mês está sem fechamento:'
+            ? '1 dia do mês está sem apurado:'
             : `${semFechamento.length} dias do mês estão sem fechamento:`}{' '}
           {semFechamento.slice(0, 4).map((dia) => formatarDataComDia(dia)).join(', ')}
           {semFechamento.length > 4 && '…'}{' '}
@@ -165,7 +165,7 @@ export function Caixa() {
       <Cartao titulo={`Resumo de ${nomeDoMes(competencia)}`}>
         <div className="valor valor--grande">{formatarDinheiro(resumo.vendas)}</div>
         <div className="estatistica__detalhe" style={{ marginBottom: 12 }}>
-          vendas em {resumo.diasLancados} dia(s) fechado(s)
+          vendas em {resumo.diasLancados} dia(s) com apurado
         </div>
 
         <Legenda
@@ -204,7 +204,7 @@ export function Caixa() {
         </Cartao>
       )}
 
-      <Cartao titulo="Dias fechados">
+      <Cartao titulo="Dias apurados">
         {pontos.length > 0 && (
           <div style={{ marginBottom: 12 }}>
             <GrupoFiltros valor={filtro} opcoes={opcoesFiltro} aoMudar={definirFiltro} />
@@ -213,7 +213,7 @@ export function Caixa() {
 
         {visiveis.length === 0 ? (
           <Vazio
-            titulo="Nenhum dia fechado neste mês"
+            titulo="Nenhum apurado neste mês"
             descricao="Comece pelo dia de hoje: informe o troco do início do dia e o total de cada forma de pagamento."
           />
         ) : (

@@ -128,7 +128,7 @@ export function Relatorios() {
         <div className="estatistica__detalhe" style={{ marginTop: 8 }}>
           {melhorDia.valor > 0
             ? `Melhor dia: ${melhorDia.rotulo.slice(8)} — ${formatarDinheiro(melhorDia.valor)}`
-            : 'Nenhum dia fechado neste mês'}
+            : 'Nenhum apurado neste mês'}
         </div>
       </Cartao>
 
@@ -217,7 +217,7 @@ export function Relatorios() {
         {recebiveis.length === 0 ? (
           <Vazio
             titulo="Nenhuma venda no crédito registrada"
-            descricao="Quando você fechar um dia com venda no crédito, o app calcula aqui o dia em que o dinheiro cai na conta."
+            descricao="Quando você lançar um dia com venda no crédito, o app calcula aqui o dia em que o dinheiro cai na conta."
           />
         ) : (
           <>
