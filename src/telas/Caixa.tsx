@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   chaveFechamento,
   fechamentosPorDia,
@@ -32,6 +32,7 @@ import { BotaoExcluir, GrupoFiltros, LinhaLista } from '../componentes/lista';
 import { FormularioFechamento } from '../componentes/FormularioFechamento';
 import { FormularioPonto } from '../componentes/FormularioPonto';
 import { SeletorMes } from '../componentes/SeletorMes';
+import { abaAtual } from '../navegacao/rotas';
 
 /** O filtro "caixa único" pega os fechamentos de quem não separa ponto de venda. */
 const SEM_PONTO = 'sem-ponto';
@@ -41,10 +42,22 @@ export function Caixa() {
   const pontos = usePontos() ?? [];
   const funcionarios = useFuncionarios() ?? [];
   const [editando, definirEditando] = useState<FechamentoCaixa | null>(null);
+  const [abrirNovo] = useState(() => abaAtual() === 'novo');
   const [editandoPonto, definirEditandoPonto] = useState<PontoDeVenda | null>(null);
   const [competencia, definirCompetencia] = useState<Competencia>(mesAtual);
   const [filtro, definirFiltro] = useState<string>('todos');
   const hoje = hojeISO();
+
+  /**
+   * Quem chega pelo atalho de lançamento quer o fechamento de hoje já aberto.
+   * O ponto de venda vem do cadastro, que chega depois do primeiro render.
+   */
+  useEffect(() => {
+    if (!abrirNovo || editando) return;
+    definirEditando(
+      novoFechamento(fechamentoVazio(hoje, pontos.find((ponto) => ponto.ativo)?.id ?? null)),
+    );
+  }, [abrirNovo, editando, hoje, pontos]);
 
   if (!acervo) return <Vazio titulo="Carregando…" />;
 

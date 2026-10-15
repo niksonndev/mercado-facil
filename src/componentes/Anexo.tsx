@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { lerAnexo, tamanhoDoAnexo } from '../dados/anexo';
 import { Botao } from './base';
-import { Campo } from './campos';
+import { Icone } from './icones';
 
 export interface PropsAnexo {
   /** Data URL da imagem já guardada, ou string vazia. */
@@ -24,9 +24,10 @@ function formatarTamanho(bytes: number): string {
  * registra boleto e cupom na prática. A imagem é reduzida antes de entrar no
  * banco e a tela diz quanto ela ocupa, porque esse peso vai junto no backup.
  */
-export function Anexo({ valor, aoMudar, rotulo = 'Anexar comprovante' }: PropsAnexo) {
+export function Anexo({ valor, aoMudar, rotulo = 'Anexar' }: PropsAnexo) {
   const [erro, definirErro] = useState('');
   const [lendo, definirLendo] = useState(false);
+  const arquivo = useRef<HTMLInputElement>(null);
 
   const escolher = async (arquivo: File | undefined) => {
     if (!arquivo) return;
@@ -42,47 +43,64 @@ export function Anexo({ valor, aoMudar, rotulo = 'Anexar comprovante' }: PropsAn
   };
 
   return (
-    <Campo
-      rotulo={rotulo}
-      dica="a foto é reduzida e vai junto no backup"
-      erro={erro || undefined}
-    >
-      {(id) => (
-        <>
-          <input
-            id={id}
-            className="entrada"
-            type="file"
-            accept="image/*"
-            capture="environment"
-            disabled={lendo}
-            onChange={(evento) => void escolher(evento.target.files?.[0])}
-          />
-
-          {lendo && <span className="campo__dica">Preparando a imagem…</span>}
-
-          {valor && (
-            <>
-              <img
-                src={valor}
-                alt="Comprovante anexado"
-                style={{
-                  maxWidth: '100%',
-                  borderRadius: 10,
-                  marginTop: 8,
-                  border: '1px solid var(--borda)',
-                }}
-              />
-              <span className="campo__dica">
-                {formatarTamanho(tamanhoDoAnexo(valor))} guardados
-              </span>
-              <Botao pequeno variante="fantasma" onClick={() => aoMudar('')}>
-                Remover anexo
-              </Botao>
-            </>
+    <>
+      <div className="campo campo--linha">
+        <span className="campo__icone">
+          <Icone nome="imagem" tamanho={20} />
+        </span>
+        <span className="campo__rotulo">
+          {rotulo}
+          {(erro || valor || lendo) && (
+            <span className="campo__dica">
+              {erro ||
+                (lendo
+                  ? 'preparando a imagem…'
+                  : `${formatarTamanho(tamanhoDoAnexo(valor))} guardados`)}
+            </span>
           )}
-        </>
+        </span>
+        <span className="campo__valor">
+          {valor ? (
+            <Botao pequeno variante="fantasma" onClick={() => aoMudar('')}>
+              Remover
+            </Botao>
+          ) : (
+            <Botao
+              variante="fantasma"
+              className="botao--icone"
+              aria-label="Escolher a foto do comprovante"
+              title="Escolher a foto do comprovante"
+              onClick={() => arquivo.current?.click()}
+            >
+              <Icone nome="enviar" tamanho={21} />
+            </Botao>
+          )}
+        </span>
+      </div>
+
+      <input
+        id="anexo-comprovante"
+        ref={arquivo}
+        className="oculto-visual"
+        type="file"
+        accept="image/*"
+        capture="environment"
+        disabled={lendo}
+        onChange={(evento) => void escolher(evento.target.files?.[0])}
+      />
+
+      {valor && (
+        <img
+          src={valor}
+          alt="Comprovante anexado"
+          style={{
+            width: '100%',
+            borderRadius: 16,
+            margin: '2px 0 12px',
+            border: '1px solid var(--borda)',
+          }}
+        />
       )}
-    </Campo>
+    </>
   );
 }

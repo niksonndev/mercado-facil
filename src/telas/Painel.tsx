@@ -22,7 +22,7 @@ import {
   rotuloPrazo,
 } from '../dominio/datas';
 import { formatarDinheiro, somarCentavos } from '../dominio/dinheiro';
-import type { FechamentoCaixa, Id } from '../dominio/tipos';
+import type { Centavos, FechamentoCaixa, Id } from '../dominio/tipos';
 import { useAcervo, useFuncionarios, usePontos } from '../dados/hooks';
 import { pagarCompromisso } from '../dados/pagamentos';
 import { fechamentoVazio, novoFechamento } from '../dados/repositorio';
@@ -39,6 +39,7 @@ import {
   Vazio,
 } from '../componentes/base';
 import { LinhaLista } from '../componentes/lista';
+import { Icone } from '../componentes/icones';
 import { irPara } from '../navegacao/rotas';
 
 const SITUACAO: Record<string, { rotulo: string; cor: string }> = {
@@ -55,6 +56,10 @@ export function Painel() {
   const [editando, definirEditando] = useState<FechamentoCaixa | null>(null);
   const [recebendo, definirRecebendo] = useState<FechamentoCaixa | null>(null);
   const [pagando, definirPagando] = useState<CompromissoPendente | null>(null);
+  const [verValores, definirVerValores] = useState(true);
+
+  /** O olho do topo esconde os números: quem mostra a tela para outra pessoa agradece. */
+  const mostrar = (valor: Centavos) => (verValores ? formatarDinheiro(valor) : 'R$ ••••');
 
   const hoje = hojeISO();
   const competencia = mesAtual();
@@ -104,6 +109,42 @@ export function Painel() {
 
   return (
     <>
+      {/* Saldo e as duas bolhas: é o retrato do mês, como no app modelo. */}
+      <div className="hero">
+        <span className="hero__rotulo">Sobrou em {nomeDoMes(competencia)}</span>
+        <span className="hero__valor">{mostrar(resumo.resultado)}</span>
+        <button
+          type="button"
+          className="hero__ver"
+          aria-label={verValores ? 'Esconder os valores' : 'Mostrar os valores'}
+          title={verValores ? 'Esconder os valores' : 'Mostrar os valores'}
+          onClick={() => definirVerValores((visivel) => !visivel)}
+        >
+          <Icone nome={verValores ? 'olho' : 'olho-fechado'} tamanho={20} />
+        </button>
+      </div>
+
+      <div className="resumo">
+        <div className="resumo__item">
+          <span className="resumo__bolha resumo__bolha--entra">
+            <Icone nome="seta-cima" tamanho={20} />
+          </span>
+          <span className="resumo__texto">
+            <span className="resumo__rotulo">Receitas</span>
+            <span className="resumo__valor">{mostrar(resumo.recebido)}</span>
+          </span>
+        </div>
+        <div className="resumo__item">
+          <span className="resumo__bolha resumo__bolha--sai">
+            <Icone nome="seta-baixo" tamanho={20} />
+          </span>
+          <span className="resumo__texto">
+            <span className="resumo__rotulo">Despesas</span>
+            <span className="resumo__valor">{mostrar(resumo.saidas.total)}</span>
+          </span>
+        </div>
+      </div>
+
       {/* Fechamento do dia: é o primeiro trabalho de todo dia. */}
       <Cartao
         destaque

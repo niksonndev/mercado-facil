@@ -23,6 +23,7 @@ import { BotaoExcluir, GrupoFiltros, LinhaLista } from '../componentes/lista';
 import { FormularioCusto } from '../componentes/FormularioCusto';
 import { GavetaPagamento, type Pagamento } from '../componentes/GavetaPagamento';
 import { SeletorMes } from '../componentes/SeletorMes';
+import { abaAtual } from '../navegacao/rotas';
 
 type Filtro = 'abertos' | 'pagos' | 'todos';
 
@@ -53,7 +54,9 @@ export function Custos() {
   const acervo = useAcervo();
   const [competencia, definirCompetencia] = useState<Competencia>(mesAtual);
   const [filtro, definirFiltro] = useState<Filtro>('abertos');
-  const [editando, definirEditando] = useState<CustoOperacional | null>(null);
+  const [editando, definirEditando] = useState<CustoOperacional | null>(() =>
+    abaAtual() === 'novo' ? CustoVazio(mesAtual()) : null,
+  );
   const [pagando, definirPagando] = useState<CustoOperacional | null>(null);
   const hoje = hojeISO();
 

@@ -4,22 +4,14 @@ import {
   FORMAS_PAGAMENTO,
   TIPOS_DESPESA,
 } from '../dominio/categorias';
-import { hojeISO } from '../dominio/datas';
+import { formatarData, hojeISO } from '../dominio/datas';
+import { formatarDinheiro } from '../dominio/dinheiro';
 import type { Despesa, TipoDespesa } from '../dominio/tipos';
 import { salvarDespesa } from '../dados/repositorio';
 import { Anexo } from './Anexo';
-import { Botao } from './base';
-import {
-  AreaTexto,
-  Campo,
-  Dupla,
-  EntradaData,
-  EntradaDinheiro,
-  EntradaTexto,
-  Marcar,
-  Selecao,
-} from './campos';
-import { Gaveta } from './Gaveta';
+import { Ficha } from './base';
+import { AreaTexto, Campo, Chave, EntradaTexto, PilulasData, Selecao } from './campos';
+import { Lancamento } from './Lancamento';
 import { useRascunho } from './rascunho';
 
 export interface PropsFormularioDespesa {
@@ -27,7 +19,13 @@ export interface PropsFormularioDespesa {
   aoFechar: () => void;
 }
 
-/** Retirada de caixa e pagamento diverso. */
+/**
+ * Retirada de caixa e pagamento diverso, na folha de lançamento.
+ *
+ * A ordem das linhas segue o que a mão procura: primeiro o que já vem
+ * respondido (saiu do caixa, data de hoje), depois o que só a pessoa sabe
+ * (descrição, valor, categoria).
+ */
 export function FormularioDespesa({ registro, aoFechar }: PropsFormularioDespesa) {
   const { rascunho, atualizar, alterar, erro, definirErro } = useRascunho(registro);
   const [salvando, definirSalvando] = useState(false);
@@ -63,28 +61,63 @@ export function FormularioDespesa({ registro, aoFechar }: PropsFormularioDespesa
   };
 
   return (
-    <Gaveta
-      aberta
+    <Lancamento
       titulo={novo ? 'Nova despesa' : 'Editar despesa'}
+      rotuloValor="Valor da despesa"
+      tom="despesa"
+      valor={rascunho.valor}
+      aoMudarValor={(valor) => atualizar('valor', valor)}
+      aoConfirmar={salvar}
       aoFechar={aoFechar}
-      rodape={
-        <>
-          <Botao onClick={aoFechar}>Cancelar</Botao>
-          <Botao variante="principal" onClick={salvar} disabled={salvando}>
-            {salvando ? 'Salvando…' : 'Salvar despesa'}
-          </Botao>
-        </>
+      erro={erro || undefined}
+      salvando={salvando}
+      rotuloConfirmar="Salvar despesa"
+      adendo={
+        <div className="lanc__total">
+          <Ficha rotulo="Valor" valor={formatarDinheiro(rascunho.valor)} />
+          <Ficha rotulo="Data" valor={formatarData(rascunho.data)} />
+          <Ficha
+            rotulo="Sai do dinheiro da gaveta"
+            valor={rascunho.retiradaDoCaixa ? 'Sim' : 'Não'}
+            cor={rascunho.retiradaDoCaixa ? 'var(--sai)' : undefined}
+          />
+        </div>
       }
     >
-      {erro && (
-        <p className="campo__erro" role="alert" style={{ marginBottom: 12 }}>
-          {erro}
-        </p>
-      )}
+      <Chave
+        rotulo="Saiu do dinheiro do caixa"
+        dica="desconta do dinheiro que deveria estar na gaveta"
+        icone="check-circulo"
+        tom="var(--sai)"
+        marcado={rascunho.retiradaDoCaixa}
+        aoMudar={(marcado) => atualizar('retiradaDoCaixa', marcado)}
+      />
 
-      <Campo rotulo="Tipo">
+      <Campo rotulo="Data" icone="calendario">
         {() => (
-          <div className="filtros">
+          <PilulasData
+            valor={rascunho.data}
+            aoMudar={(valor) => atualizar('data', valor || hojeISO())}
+          />
+        )}
+      </Campo>
+
+      <Campo rotulo="Descrição" icone="microfone">
+        {(id) => (
+          <EntradaTexto
+            id={id}
+            valor={rascunho.descricao}
+            placeholder={
+              rascunho.tipo === 'retirada' ? 'Retirada do dono' : 'Conserto do freezer'
+            }
+            aoMudar={(valor) => atualizar('descricao', valor)}
+          />
+        )}
+      </Campo>
+
+      <Campo rotulo="Tipo" icone="marcador">
+        {() => (
+          <div className="pilulas">
             {TIPOS_DESPESA.map((tipo) => (
               <button
                 key={tipo.valor}
@@ -100,70 +133,35 @@ export function FormularioDespesa({ registro, aoFechar }: PropsFormularioDespesa
         )}
       </Campo>
 
-      <Campo rotulo="Descrição">
+      <Campo rotulo="Categoria" icone="marcador">
         {(id) => (
-          <EntradaTexto
+          <Selecao
             id={id}
-            valor={rascunho.descricao}
-            placeholder={
-              rascunho.tipo === 'retirada' ? 'Retirada do dono' : 'Conserto do freezer'
-            }
-            aoMudar={(valor) => atualizar('descricao', valor)}
+            valor={rascunho.categoria}
+            aoMudar={(valor) => atualizar('categoria', valor)}
+            opcoes={CATEGORIAS_DESPESA.map((categoria) => ({
+              valor: categoria.valor,
+              rotulo: categoria.rotulo,
+            }))}
           />
         )}
       </Campo>
 
-      <Dupla>
-        <Campo rotulo="Valor">
-          {(id) => (
-            <EntradaDinheiro
-              id={id}
-              valor={rascunho.valor}
-              aoMudar={(valor) => atualizar('valor', valor)}
-            />
-          )}
-        </Campo>
-        <Campo rotulo="Data">
-          {(id) => (
-            <EntradaData
-              id={id}
-              valor={rascunho.data}
-              aoMudar={(valor) => atualizar('data', valor || hojeISO())}
-            />
-          )}
-        </Campo>
-      </Dupla>
+      <Campo rotulo="Forma de pagamento" icone="carteira">
+        {(id) => (
+          <Selecao
+            id={id}
+            valor={rascunho.formaPagamento}
+            aoMudar={(valor) => atualizar('formaPagamento', valor)}
+            opcoes={FORMAS_PAGAMENTO.map((forma) => ({
+              valor: forma.valor,
+              rotulo: forma.rotulo,
+            }))}
+          />
+        )}
+      </Campo>
 
-      <Dupla>
-        <Campo rotulo="Categoria">
-          {(id) => (
-            <Selecao
-              id={id}
-              valor={rascunho.categoria}
-              aoMudar={(valor) => atualizar('categoria', valor)}
-              opcoes={CATEGORIAS_DESPESA.map((categoria) => ({
-                valor: categoria.valor,
-                rotulo: categoria.rotulo,
-              }))}
-            />
-          )}
-        </Campo>
-        <Campo rotulo="Forma de pagamento">
-          {(id) => (
-            <Selecao
-              id={id}
-              valor={rascunho.formaPagamento}
-              aoMudar={(valor) => atualizar('formaPagamento', valor)}
-              opcoes={FORMAS_PAGAMENTO.map((forma) => ({
-                valor: forma.valor,
-                rotulo: forma.rotulo,
-              }))}
-            />
-          )}
-        </Campo>
-      </Dupla>
-
-      <Campo rotulo="Beneficiário" dica="Para quem foi pago">
+      <Campo rotulo="Beneficiário" dica="para quem foi pago" icone="pessoa">
         {(id) => (
           <EntradaTexto
             id={id}
@@ -174,31 +172,27 @@ export function FormularioDespesa({ registro, aoFechar }: PropsFormularioDespesa
         )}
       </Campo>
 
-      <Marcar
-        rotulo="Saiu do dinheiro do caixa"
-        dica="desconta do dinheiro que deveria estar na gaveta"
-        marcado={rascunho.retiradaDoCaixa}
-        aoMudar={(marcado) => atualizar('retiradaDoCaixa', marcado)}
-      />
+      <Anexo valor={rascunho.anexo} aoMudar={(valor) => atualizar('anexo', valor)} />
 
-      <Marcar
+      <Chave
         rotulo="Despesa fixa"
         dica="todo mês a tela oferece lançar essa despesa no mês seguinte"
+        icone="repetir"
+        tom="var(--acento)"
         marcado={rascunho.fixa}
         aoMudar={(marcado) => atualizar('fixa', marcado)}
       />
 
-      <Anexo valor={rascunho.anexo} aoMudar={(valor) => atualizar('anexo', valor)} />
-
-      <Campo rotulo="Observação">
+      <Campo rotulo="Observação" icone="caneta">
         {(id) => (
           <AreaTexto
             id={id}
             valor={rascunho.observacao}
+            placeholder="O que foi pago, com quem falou…"
             aoMudar={(valor) => atualizar('observacao', valor)}
           />
         )}
       </Campo>
-    </Gaveta>
+    </Lancamento>
   );
 }

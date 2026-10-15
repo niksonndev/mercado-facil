@@ -7,8 +7,14 @@ import type { FechamentoCaixa, Funcionario, PontoDeVenda, PrazoCredito } from '.
 import { db } from '../dados/db';
 import { salvarFechamento } from '../dados/repositorio';
 import { Botao, Ficha } from './base';
-import { AreaTexto, Campo, Dupla, EntradaData, EntradaDinheiro, Selecao } from './campos';
-import { Gaveta } from './Gaveta';
+import {
+  AreaTexto,
+  Campo,
+  EntradaDinheiro,
+  PilulasData,
+  Selecao,
+} from './campos';
+import { Lancamento } from './Lancamento';
 import { useRascunho } from './rascunho';
 
 export interface PropsFormularioFechamento {
@@ -20,11 +26,12 @@ export interface PropsFormularioFechamento {
 }
 
 /**
- * Fechamento de um dia: o troco que começou o caixa e o que foi vendido em cada
- * forma de pagamento, mais o fiado.
+ * Fechamento de um dia, na folha verde de entrada.
  *
- * Quando a loja tem mais de um caixa, o mesmo dia é fechado uma vez por ponto
- * de venda, cada um com a pessoa que respondeu por ele.
+ * O valor grande do topo é o total vendido no dia, que soma as formas de
+ * pagamento — por isso ele não se digita, se lê. Quando a loja tem mais de um
+ * caixa, o mesmo dia é fechado uma vez por ponto de venda, cada um com a pessoa
+ * que respondeu por ele.
  */
 export function FormularioFechamento({
   registro,
@@ -76,48 +83,77 @@ export function FormularioFechamento({
   };
 
   return (
-    <Gaveta
-      aberta
+    <Lancamento
       titulo={novo ? 'Fechar o dia' : 'Editar fechamento'}
+      rotuloValor="Vendas do dia"
+      tom="receita"
+      valor={resumo.vendas}
+      aoMudarValor={() => undefined}
+      somenteLeitura
+      aoConfirmar={salvar}
       aoFechar={aoFechar}
-      rodape={
-        <>
-          <Botao onClick={aoFechar}>Cancelar</Botao>
-          <Botao variante="principal" onClick={salvar} disabled={salvando}>
-            {salvando ? 'Salvando…' : 'Salvar fechamento'}
-          </Botao>
-        </>
+      erro={erro || undefined}
+      salvando={salvando}
+      rotuloConfirmar="Salvar fechamento"
+      adendo={
+        <div className="lanc__total">
+          <Ficha
+            rotulo="Entrou no caixa"
+            valor={formatarDinheiro(resumo.recebido)}
+            cor="var(--entra)"
+          />
+          <Ficha rotulo="Vendas no fiado" valor={formatarDinheiro(resumo.fiado)} />
+          {rascunho.credito > 0 && (
+            <Ficha
+              rotulo={
+                rascunho.creditoRecebidoEm
+                  ? `Crédito recebido em ${formatarData(rascunho.creditoRecebidoEm)}`
+                  : 'Crédito cai na conta em'
+              }
+              valor={
+                rascunho.creditoRecebidoEm
+                  ? formatarDinheiro(rascunho.creditoRecebidoValor ?? rascunho.credito)
+                  : formatarData(dataPrevistaCredito(rascunho.data, rascunho.prazoCredito))
+              }
+            />
+          )}
+          {rascunho.creditoRecebidoEm && (
+            <Botao
+              pequeno
+              variante="fantasma"
+              onClick={() => {
+                // Caminho de volta de quem marcou o crédito como recebido por engano.
+                atualizar('creditoRecebidoEm', null);
+                atualizar('creditoRecebidoValor', null);
+              }}
+            >
+              Desfazer o recebimento
+            </Botao>
+          )}
+        </div>
       }
     >
-      {erro && (
-        <p className="campo__erro" role="alert" style={{ marginBottom: 12 }}>
-          {erro}
-        </p>
-      )}
+      <Campo rotulo="Dia do movimento" icone="calendario">
+        {() => (
+          <PilulasData
+            valor={rascunho.data}
+            aoMudar={(valor) => atualizar('data', valor || hojeISO())}
+          />
+        )}
+      </Campo>
 
-      <Dupla>
-        <Campo rotulo="Dia do movimento">
-          {(id) => (
-            <EntradaData
-              id={id}
-              valor={rascunho.data}
-              aoMudar={(valor) => atualizar('data', valor || hojeISO())}
-            />
-          )}
-        </Campo>
-        <Campo rotulo="Fundo de caixa" dica="Troco que começou o dia">
-          {(id) => (
-            <EntradaDinheiro
-              id={id}
-              valor={rascunho.fundoInicial}
-              aoMudar={(valor) => atualizar('fundoInicial', valor)}
-            />
-          )}
-        </Campo>
-      </Dupla>
+      <Campo rotulo="Fundo de caixa" dica="troco que começou o dia" icone="carteira">
+        {(id) => (
+          <EntradaDinheiro
+            id={id}
+            valor={rascunho.fundoInicial}
+            aoMudar={(valor) => atualizar('fundoInicial', valor)}
+          />
+        )}
+      </Campo>
 
       {pontos.length > 0 && (
-        <Campo rotulo="Ponto de venda" dica="Cada caixa fecha o dia no seu lançamento">
+        <Campo rotulo="Ponto de venda" dica="cada caixa fecha no seu lançamento" icone="banco">
           {(id) => (
             <Selecao<string>
               id={id}
@@ -130,29 +166,8 @@ export function FormularioFechamento({
         </Campo>
       )}
 
-      {rascunho.credito > 0 && (
-        <Campo
-          rotulo="Quando o crédito cai na conta"
-          dica={`Pela venda de hoje: ${formatarData(
-            dataPrevistaCredito(rascunho.data, rascunho.prazoCredito),
-          )}`}
-        >
-          {(id) => (
-            <Selecao<PrazoCredito>
-              id={id}
-              valor={rascunho.prazoCredito}
-              opcoes={PRAZOS_CREDITO.map((prazo) => ({
-                valor: prazo.valor,
-                rotulo: prazo.rotulo,
-              }))}
-              aoMudar={(valor) => atualizar('prazoCredito', valor)}
-            />
-          )}
-        </Campo>
-      )}
-
       {ativos.length > 0 && (
-        <Campo rotulo="Responsável pelo caixa" dica="Quem respondeu por esse caixa na data">
+        <Campo rotulo="Responsável pelo caixa" icone="pessoa">
           {(id) => (
             <Selecao<string>
               id={id}
@@ -170,8 +185,10 @@ export function FormularioFechamento({
         </Campo>
       )}
 
+      <div className="lanc__grupo">Como entrou o dinheiro</div>
+
       {FORMAS_PAGAMENTO.map((forma) => (
-        <Campo key={forma.valor} rotulo={forma.rotulo}>
+        <Campo key={forma.valor} rotulo={forma.rotulo} icone="carteira">
           {(id) => (
             <EntradaDinheiro
               id={id}
@@ -182,7 +199,7 @@ export function FormularioFechamento({
         </Campo>
       ))}
 
-      <Campo rotulo={FIADO.rotulo} dica="Vendido na caderneta, ainda não entrou">
+      <Campo rotulo={FIADO.rotulo} dica="vendido na caderneta" icone="caneta">
         {(id) => (
           <EntradaDinheiro
             id={id}
@@ -192,7 +209,29 @@ export function FormularioFechamento({
         )}
       </Campo>
 
-      <Campo rotulo="Observação">
+      {rascunho.credito > 0 && (
+        <Campo
+          rotulo="Quando o crédito cai na conta"
+          dica={`pela venda deste dia: ${formatarData(
+            dataPrevistaCredito(rascunho.data, rascunho.prazoCredito),
+          )}`}
+          icone="banco"
+        >
+          {(id) => (
+            <Selecao<PrazoCredito>
+              id={id}
+              valor={rascunho.prazoCredito}
+              opcoes={PRAZOS_CREDITO.map((prazo) => ({
+                valor: prazo.valor,
+                rotulo: prazo.rotulo,
+              }))}
+              aoMudar={(valor) => atualizar('prazoCredito', valor)}
+            />
+          )}
+        </Campo>
+      )}
+
+      <Campo rotulo="Observação" icone="caneta">
         {(id) => (
           <AreaTexto
             id={id}
@@ -202,40 +241,6 @@ export function FormularioFechamento({
           />
         )}
       </Campo>
-
-      <div className="cartao" style={{ background: 'var(--superficie-2)' }}>
-        <Ficha rotulo="Entrou no caixa" valor={formatarDinheiro(resumo.recebido)} cor="var(--acento)" />
-        <Ficha rotulo="Vendas no fiado" valor={formatarDinheiro(resumo.fiado)} />
-        <Ficha rotulo="Vendas do dia" valor={formatarDinheiro(resumo.vendas)} />
-        {rascunho.credito > 0 && (
-          <Ficha
-            rotulo={
-              rascunho.creditoRecebidoEm
-                ? `Crédito recebido em ${formatarData(rascunho.creditoRecebidoEm)}`
-                : 'Crédito cai na conta em'
-            }
-            valor={
-              rascunho.creditoRecebidoEm
-                ? formatarDinheiro(rascunho.creditoRecebidoValor ?? rascunho.credito)
-                : formatarData(dataPrevistaCredito(rascunho.data, rascunho.prazoCredito))
-            }
-          />
-        )}
-
-        {rascunho.creditoRecebidoEm && (
-          <Botao
-            pequeno
-            variante="fantasma"
-            onClick={() => {
-              // Caminho de volta de quem marcou o crédito como recebido por engano.
-              atualizar('creditoRecebidoEm', null);
-              atualizar('creditoRecebidoValor', null);
-            }}
-          >
-            Desfazer o recebimento
-          </Botao>
-        )}
-      </div>
-    </Gaveta>
+    </Lancamento>
   );
 }

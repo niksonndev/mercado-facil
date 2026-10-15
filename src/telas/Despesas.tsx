@@ -9,6 +9,7 @@ import { Botao, Cartao, Estatistica, Vazio } from '../componentes/base';
 import { GrupoFiltros, LinhaLista } from '../componentes/lista';
 import { FormularioDespesa } from '../componentes/FormularioDespesa';
 import { SeletorMes } from '../componentes/SeletorMes';
+import { abaAtual } from '../navegacao/rotas';
 
 type Filtro = 'todas' | TipoDespesa;
 
@@ -32,7 +33,9 @@ export function Despesas() {
   const acervo = useAcervo();
   const [competencia, definirCompetencia] = useState<Competencia>(mesAtual);
   const [filtro, definirFiltro] = useState<Filtro>('todas');
-  const [editando, definirEditando] = useState<Despesa | null>(null);
+  const [editando, definirEditando] = useState<Despesa | null>(() =>
+    abaAtual() === 'novo' ? despesaVazia(hojeISO()) : null,
+  );
   const hoje = hojeISO();
 
   if (!acervo) return <Vazio titulo="Carregando…" />;

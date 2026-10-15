@@ -1,6 +1,8 @@
 import { useId, useState, type ReactNode } from 'react';
+import { adicionarDias, hojeISO } from '../dominio/datas';
 import { formatarDinheiroSemSimbolo, mascararDinheiro, parseDinheiro } from '../dominio/dinheiro';
 import type { Centavos } from '../dominio/tipos';
+import { Icone, type NomeIcone } from './icones';
 
 /* ------------------------------------------------------------------- campo */
 
@@ -8,15 +10,22 @@ export interface PropsCampo {
   rotulo: string;
   dica?: string;
   erro?: string;
+  /** Com ícone, o campo vira uma linha da folha de lançamento. */
+  icone?: NomeIcone;
   children: (id: string) => ReactNode;
 }
 
 /** Envolve um controle com rótulo, dica e erro, ligados pelo mesmo id. */
-export function Campo({ rotulo, dica, erro, children }: PropsCampo) {
+export function Campo({ rotulo, dica, erro, icone, children }: PropsCampo) {
   const id = useId();
 
   return (
-    <div className="campo">
+    <div className={`campo${icone ? ' campo--linha' : ''}`}>
+      {icone && (
+        <span className="campo__icone">
+          <Icone nome={icone} tamanho={20} />
+        </span>
+      )}
       <label className="campo__rotulo" htmlFor={id}>
         {rotulo}
       </label>
@@ -28,6 +37,49 @@ export function Campo({ rotulo, dica, erro, children }: PropsCampo) {
       ) : (
         dica && <span className="campo__dica">{dica}</span>
       )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ chave */
+
+export interface PropsChave {
+  rotulo: string;
+  marcado: boolean;
+  aoMudar: (marcado: boolean) => void;
+  /** Cor do trilho quando ligada (entradas e saídas, por exemplo). */
+  tom?: string;
+  icone?: NomeIcone;
+  dica?: string;
+}
+
+/**
+ * Chave de ligar/desligar, no lugar da caixinha de marcar.
+ *
+ * É o controle do app modelo: no celular o dedo acerta o alvo inteiro, sem
+ * precisar mirar no quadradinho.
+ */
+export function Chave({ rotulo, marcado, aoMudar, tom, icone, dica }: PropsChave) {
+  return (
+    <div className="campo campo--linha">
+      {icone && (
+        <span className="campo__icone">
+          <Icone nome={icone} tamanho={20} />
+        </span>
+      )}
+      <span className="campo__rotulo" id={`${rotulo}-rotulo`}>
+        {rotulo}
+        {dica && <span className="campo__dica">{dica}</span>}
+      </span>
+      <label className="chave" style={tom ? { ['--tom' as string]: tom } : undefined}>
+        <input
+          type="checkbox"
+          checked={marcado}
+          aria-labelledby={`${rotulo}-rotulo`}
+          onChange={(evento) => aoMudar(evento.target.checked)}
+        />
+        <span className="chave__trilho" />
+      </label>
     </div>
   );
 }
@@ -248,4 +300,66 @@ export function Marcar({
 /** Duas colunas no desktop, empilhado no celular. */
 export function Dupla({ children }: { children: ReactNode }) {
   return <div className="dupla">{children}</div>;
+}
+
+/* -------------------------------------------------------------- data rápida */
+
+/**
+ * Hoje / Ontem / Outros, como no app modelo.
+ *
+ * É o caminho de 90% dos lançamentos: quem anota à noite lança do dia. A data
+ * completa só aparece quando a pessoa escolhe "Outros".
+ */
+export function PilulasData({
+  valor,
+  aoMudar,
+}: {
+  valor: string;
+  aoMudar: (valor: string) => void;
+}) {
+  const hoje = hojeISO();
+  const ontem = adicionarDias(hoje, -1);
+  const [outros, definirOutros] = useState(valor !== hoje && valor !== ontem);
+
+  const escolher = (dia: string) => {
+    definirOutros(false);
+    aoMudar(dia);
+  };
+
+  return (
+    <>
+      <div className="pilulas">
+        <button
+          type="button"
+          className="filtro"
+          aria-pressed={!outros && valor === hoje}
+          onClick={() => escolher(hoje)}
+        >
+          Hoje
+        </button>
+        <button
+          type="button"
+          className="filtro"
+          aria-pressed={!outros && valor === ontem}
+          onClick={() => escolher(ontem)}
+        >
+          Ontem
+        </button>
+        <button
+          type="button"
+          className="filtro"
+          aria-pressed={outros}
+          onClick={() => definirOutros(true)}
+        >
+          Outros…
+        </button>
+      </div>
+
+      {outros && (
+        <div style={{ marginTop: 8 }}>
+          <EntradaData valor={valor} aoMudar={aoMudar} />
+        </div>
+      )}
+    </>
+  );
 }

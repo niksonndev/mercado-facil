@@ -44,7 +44,6 @@ export const ROTAS: Rota[] = [
     curto: 'Despesas',
     icone: 'despesas',
     grupo: 'movimento',
-    naBarra: true,
   },
   {
     caminho: 'custos',
@@ -111,11 +110,21 @@ export function rotaPorCaminho(caminho: string): Rota {
   return ROTAS_POR_CAMINHO.get(caminho) ?? ROTAS_POR_CAMINHO.get(ROTA_PADRAO)!;
 }
 
-/** Lê o endereço atual: #/contas/pendentes vira { caminho, aba }. */
+/** O endereço atual: #/contas/pendentes vira { caminho, aba }. */
 export function lerEndereco(): { caminho: string; aba: string } {
   const bruto = window.location.hash.replace(/^#\/?/, '');
   const [caminho = '', aba = ''] = bruto.split('/');
   return { caminho: caminho || ROTA_PADRAO, aba };
+}
+
+/**
+ * Estado extra do endereço no momento em que a tela monta.
+ *
+ * É como o atalho de lançamento abre o formulário já aberto: a tela lê
+ * `#/despesas/novo` no primeiro render e começa com a folha de lançamento.
+ */
+export function abaAtual(): string {
+  return lerEndereco().aba;
 }
 
 /**

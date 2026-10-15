@@ -28,6 +28,22 @@ export type NomeIcone =
   | 'fechar'
   | 'alerta'
   | 'banco'
+  | 'calendario'
+  | 'microfone'
+  | 'coracao'
+  | 'marcador'
+  | 'carteira'
+  | 'imagem'
+  | 'alfinete'
+  | 'repetir'
+  | 'caneta'
+  | 'seta-cima'
+  | 'seta-baixo'
+  | 'olho'
+  | 'olho-fechado'
+  | 'chevron'
+  | 'check-circulo'
+  | 'pessoa'
   | 'mercado';
 
 const TRACOS: Record<NomeIcone, string> = {
@@ -56,6 +72,22 @@ const TRACOS: Record<NomeIcone, string> = {
   fechar: 'M6 6l12 12M18 6 6 18',
   alerta: 'M12 4 2.5 20.5h19zM12 10v4.5M12 17.5h.01',
   banco: 'M3.5 9 12 3.5 20.5 9M5 9v10M9.5 9v10M14.5 9v10M19 9v10M3 19.5h18M3.5 22h17',
+  calendario: 'M4.5 6.5h15v13h-15zM4.5 10.5h15M8.5 4v4M15.5 4v4M8.5 14h2M14 14h2M8.5 17h2M14 17h2',
+  microfone: 'M12 3.5a2.6 2.6 0 0 0-2.6 2.6v5a2.6 2.6 0 0 0 5.2 0v-5A2.6 2.6 0 0 0 12 3.5ZM6.5 11a5.5 5.5 0 0 0 11 0M12 16.5V21M9 21h6',
+  coracao: 'M12 20s-7.5-4.4-7.5-9.4A4.1 4.1 0 0 1 12 8.2a4.1 4.1 0 0 1 7.5 2.4C19.5 15.6 12 20 12 20Z',
+  marcador: 'M7 4h10v16l-5-3.5L7 20V4Z',
+  carteira: 'M4 7.5h16v11.5H4zM4 7.5 6 4h12l2 3.5M4 12h16M15 12v3h4',
+  imagem: 'M4.5 5.5h15v13h-15zM4.5 15l4-4 3.5 3.5 3-2.5 4.5 4M9 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z',
+  alfinete: 'M9 4h6l-1 5 3.5 3.5H5.5L9 9 8 4M12 12.5V20',
+  repetir: 'M4.5 12a7.5 7.5 0 0 1 12.9-5.2M19.5 12a7.5 7.5 0 0 1-12.9 5.2M17.5 4v3h-3M6.5 20v-3h3',
+  caneta: 'M4.5 19.5h3.5L19 8.5l-3.5-3.5L4.5 16v3.5ZM14.5 6 18 9.5',
+  'seta-cima': 'M12 19.5v-15M6.5 10 12 4.5 17.5 10',
+  'seta-baixo': 'M12 4.5v15M6.5 14 12 19.5 17.5 14',
+  olho: 'M2.5 12S6 6.5 12 6.5 21.5 12 21.5 12 18 17.5 12 17.5 2.5 12 2.5 12ZM12 14.8a2.8 2.8 0 1 0 0-5.6 2.8 2.8 0 0 0 0 5.6Z',
+  'olho-fechado': 'M3.5 8.5C6 11 8.8 12.4 12 12.4s6-1.4 8.5-3.9M6.5 12.2 5 15M12 12.9v2.9M17.5 12.2 19 15',
+  chevron: 'M9.5 5.5 16 12l-6.5 6.5',
+  'check-circulo': 'M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17ZM8 12.2l2.8 2.8L16 9.8',
+  pessoa: 'M12 11.5a3.6 3.6 0 1 0 0-7.2 3.6 3.6 0 0 0 0 7.2ZM4.5 20.5c0-3.9 3.4-7 7.5-7s7.5 3.1 7.5 7',
   mercado: 'M4 9.5h16l-1.5-5h-13zM6 9.5v11h12v-11M10 20.5v-5.5h4v5.5',
 };
 

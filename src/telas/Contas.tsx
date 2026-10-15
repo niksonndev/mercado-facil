@@ -16,6 +16,7 @@ import { GrupoFiltros, LinhaLista } from '../componentes/lista';
 import { FormularioConta } from '../componentes/FormularioConta';
 import { GavetaPagamento, type Pagamento } from '../componentes/GavetaPagamento';
 import { ImportarComprovante } from '../componentes/ImportarComprovante';
+import { abaAtual } from '../navegacao/rotas';
 
 type Filtro = 'abertas' | 'atrasadas' | 'pagas' | 'todas';
 
@@ -32,7 +33,9 @@ export function Contas() {
   const cartoes = useCartoes() ?? [];
   const [filtro, definirFiltro] = useState<Filtro>('abertas');
   const [tipo, definirTipo] = useState<'todas' | Conta['tipo']>('todas');
-  const [editando, definirEditando] = useState<Conta | null>(null);
+  const [editando, definirEditando] = useState<Conta | null>(() =>
+    abaAtual() === 'novo' ? novaConta(contaVazia()) : null,
+  );
   const [pagando, definirPagando] = useState<Conta | null>(null);
   const hoje = hojeISO();
 
