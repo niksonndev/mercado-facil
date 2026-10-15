@@ -9,6 +9,7 @@ import type {
   FolhaItem,
   Fornecedor,
   Funcionario,
+  IndicadoresDre,
 } from '../dominio/tipos';
 import { db } from './db';
 
@@ -74,6 +75,7 @@ export async function carregarExemplos(hoje: DataISO = hojeISO()): Promise<void>
   // Fechamentos do dia 1 até ontem: hoje continua em aberto.
   const fechamentos: FechamentoCaixa[] = [];
   const ultimoDia = Number(hoje.slice(8)) - 1;
+  let vendasDoMes = 0;
 
   for (let dia = 1; dia <= ultimoDia; dia += 1) {
     const data = `${competencia}-${String(dia).padStart(2, '0')}`;
@@ -83,15 +85,23 @@ export async function carregarExemplos(hoje: DataISO = hojeISO()): Promise<void>
     const vendas =
       (reais(1900) + Math.round(sorteio() * reais(2100))) * movimento;
 
+    const dinheiro = Math.round(vendas * (0.3 + sorteio() * 0.08));
+    const pix = Math.round(vendas * (0.3 + sorteio() * 0.06));
+    const debito = Math.round(vendas * (0.15 + sorteio() * 0.05));
+    const credito = Math.round(vendas * (0.12 + sorteio() * 0.05));
+    const fiado = Math.round(vendas * (0.02 + sorteio() * 0.04));
+
+    vendasDoMes += dinheiro + pix + debito + credito + fiado;
+
     fechamentos.push({
       id: id(),
       data,
       fundoInicial: reais(200),
-      dinheiro: Math.round(vendas * (0.3 + sorteio() * 0.08)),
-      pix: Math.round(vendas * (0.3 + sorteio() * 0.06)),
-      debito: Math.round(vendas * (0.15 + sorteio() * 0.05)),
-      credito: Math.round(vendas * (0.12 + sorteio() * 0.05)),
-      fiado: Math.round(vendas * (0.02 + sorteio() * 0.04)),
+      dinheiro,
+      pix,
+      debito,
+      credito,
+      fiado,
       observacao: '',
       criadoEm: agora,
       atualizadoEm: agora,
@@ -348,6 +358,17 @@ export async function carregarExemplos(hoje: DataISO = hojeISO()): Promise<void>
     });
   }
 
+  // O CMV do mês, que só a pessoa sabe: no exemplo, a mercadoria custa cerca
+  // de 72% do que foi vendido — deixa o DRE com uma margem realista.
+  const indicadores: IndicadoresDre[] = [
+    {
+      competencia,
+      cmv: Math.round(vendasDoMes * 0.72),
+      observacao: 'Estimado no exemplo',
+      atualizadoEm: agora,
+    },
+  ];
+
   await db.transaction('rw', db.tables, async () => {
     await Promise.all(db.tables.map((tabela) => tabela.clear()));
     await db.fornecedores.bulkPut(fornecedores);
@@ -357,5 +378,6 @@ export async function carregarExemplos(hoje: DataISO = hojeISO()): Promise<void>
     await db.despesas.bulkPut(despesas);
     await db.custos.bulkPut(custos);
     await db.folha.bulkPut(folha);
+    await db.indicadores.bulkPut(indicadores);
   });
 }

@@ -12,6 +12,7 @@ import type {
   Fornecedor,
   FormaPagamento,
   Funcionario,
+  IndicadoresDre,
   TipoConta,
   TipoDespesa,
 } from '../dominio/tipos';
@@ -253,6 +254,18 @@ function lerFolha(bruto: Record<string, unknown>): FolhaItem | null {
   };
 }
 
+function lerIndicadores(bruto: Record<string, unknown>): IndicadoresDre | null {
+  const competencia = comoTexto(bruto.competencia);
+  if (!/^\d{4}-\d{2}$/.test(competencia)) return null;
+
+  return {
+    competencia,
+    cmv: comoCentavos(bruto.cmv),
+    observacao: comoTexto(bruto.observacao),
+    atualizadoEm: momento(bruto.atualizadoEm),
+  };
+}
+
 export interface ResultadoImportacao {
   porTabela: Partial<Record<NomeTabela, number>>;
   total: number;
@@ -304,6 +317,9 @@ export async function importarBackup(texto: string): Promise<ResultadoImportacao
   const folha = comoLista(dados.folha)
     .map(lerFolha)
     .filter((item): item is FolhaItem => item !== null);
+  const indicadores = comoLista(dados.indicadores)
+    .map(lerIndicadores)
+    .filter((item): item is IndicadoresDre => item !== null);
 
   const leram = {
     fechamentos: fechamentos.length,
@@ -313,6 +329,7 @@ export async function importarBackup(texto: string): Promise<ResultadoImportacao
     fornecedores: fornecedores.length,
     funcionarios: funcionarios.length,
     folha: folha.length,
+    indicadores: indicadores.length,
   };
 
   const noArquivo = TABELAS.reduce(
@@ -331,6 +348,7 @@ export async function importarBackup(texto: string): Promise<ResultadoImportacao
     await db.custos.bulkPut(custos);
     await db.funcionarios.bulkPut(funcionarios);
     await db.folha.bulkPut(folha);
+    await db.indicadores.bulkPut(indicadores);
   });
 
   return { porTabela: leram, total, ignorados: noArquivo - total };

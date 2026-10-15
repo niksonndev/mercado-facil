@@ -23,6 +23,7 @@ export function Dados() {
     ['Despesas', acervo.despesas.length],
     ['Custos operacionais', acervo.custos.length],
     ['Folha de pagamento', acervo.folha.length],
+    ['Meses com DRE', acervo.indicadores.length],
   ] as const;
 
   const totalLancamentos = contagens.reduce((soma, [, quantos]) => soma + quantos, 0);

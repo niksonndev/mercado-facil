@@ -12,6 +12,7 @@ import type {
   FormaPagamento,
   Funcionario,
   Id,
+  IndicadoresDre,
 } from '../dominio/tipos';
 import { db } from './db';
 
@@ -180,6 +181,27 @@ export function folhaDoFuncionario(
     observacao: '',
   });
 }
+
+/**
+ * Grava os números informados à mão para o mês.
+ *
+ * A competência é a chave: informar o CMV de novo no mesmo mês sobrescreve o
+ * valor anterior em vez de criar um segundo registro.
+ */
+export function salvarIndicadores(
+  dados: Omit<IndicadoresDre, 'atualizadoEm'>,
+): Promise<string> {
+  return db.indicadores.put({ ...dados, atualizadoEm: agora() });
+}
+
+/**
+ * Esquece o CMV do mês.
+ *
+ * É a saída para quem informou um valor errado e não tem outro para colocar no
+ * lugar: sem registro, o DRE volta a avisar que o lucro está inflado.
+ */
+export const apagarIndicadores = (competencia: Competencia): Promise<void> =>
+  db.indicadores.delete(competencia);
 
 /** Apaga todos os lançamentos, mantendo o app pronto para um novo começo. */
 export async function apagarTudo(): Promise<void> {
