@@ -27,15 +27,15 @@ jobs:
     name: Testes, build e validação do PWA
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Instalar o pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 11
 
       - name: Instalar o Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -57,7 +57,7 @@ jobs:
         run: pnpm check-pwa
 
       - name: Publicar o dist como artefato
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dist
           path: dist/
@@ -81,19 +81,19 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - name: Baixar o dist gerado no job de qualidade
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: dist
           path: dist
 
       - name: Configurar o Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
 
       - name: Empacotar o site
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: dist
 
       - name: Deploy
         id: deploy
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
