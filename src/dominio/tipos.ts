@@ -158,6 +158,21 @@ export interface FolhaItem {
   criadoEm: string;
 }
 
+/**
+ * Números que o app não consegue deduzir sozinho e a pessoa informa à mão.
+ *
+ * O CMV (custo da mercadoria vendida) é o que separa o DRE do relatório de
+ * caixa: a compra de fornecedor é reposição de estoque, não despesa do mês.
+ * Existe um registro por competência — a própria competência é a chave.
+ */
+export interface IndicadoresDre {
+  competencia: Competencia;
+  /** Custo da mercadoria vendida no mês. */
+  cmv: Centavos;
+  observacao: string;
+  atualizadoEm: string;
+}
+
 /** Situação de um compromisso calculada na leitura, não gravada. */
 export type Situacao = 'pago' | 'atrasado' | 'vence-hoje' | 'a-vencer';
 
@@ -168,4 +183,5 @@ export interface Acervo {
   despesas: Despesa[];
   custos: CustoOperacional[];
   folha: FolhaItem[];
+  indicadores: IndicadoresDre[];
 }

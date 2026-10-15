@@ -12,15 +12,16 @@ import { db } from './db';
  */
 export function useAcervo(): Acervo | undefined {
   return useLiveQuery(async () => {
-    const [fechamentos, contas, despesas, custos, folha] = await Promise.all([
+    const [fechamentos, contas, despesas, custos, folha, indicadores] = await Promise.all([
       db.fechamentos.toArray(),
       db.contas.toArray(),
       db.despesas.toArray(),
       db.custos.toArray(),
       db.folha.toArray(),
+      db.indicadores.toArray(),
     ]);
 
-    return { fechamentos, contas, despesas, custos, folha };
+    return { fechamentos, contas, despesas, custos, folha, indicadores };
   }, []);
 }
 

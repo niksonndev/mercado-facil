@@ -3,6 +3,7 @@ import {
   calcularFolha,
   compromissosPendentes,
   dinheiroEsperadoEmCaixa,
+  dre,
   pendencias,
   resumoDoMes,
   resumoFechamento,
@@ -18,6 +19,7 @@ import type {
   Despesa,
   FechamentoCaixa,
   FolhaItem,
+  IndicadoresDre,
 } from './tipos';
 
 const HOJE = '2026-10-15';
@@ -163,6 +165,7 @@ const ACERVO: Acervo = {
     custo({ vencimento: '2026-10-08', valorPrevisto: 12000, categoria: 'agua' }),
   ],
   folha: [folhaItem({ competencia: '2026-09', pagoEm: '2026-10-05' })],
+  indicadores: [],
 };
 
 describe('fechamento do dia', () => {
@@ -323,5 +326,142 @@ describe('resumo do mês', () => {
       [14, 115000],
       [15, 77000],
     ]);
+  });
+});
+
+describe('DRE do mês', () => {
+  const indicador = (cmv: number): IndicadoresDre => ({
+    competencia: '2026-10',
+    cmv,
+    observacao: '',
+    atualizadoEm: '2026-10-15T00:00:00.000Z',
+  });
+
+  const ACERVO_DRE: Acervo = {
+    fechamentos: [
+      fechamento({
+        data: '2026-10-10',
+        dinheiro: 400000,
+        pix: 200000,
+        debito: 100000,
+        credito: 100000,
+        fiado: 50000,
+      }),
+    ],
+    contas: [],
+    despesas: [
+      despesa({ data: '2026-10-02', valor: 5000, categoria: 'taxas' }),
+      despesa({ data: '2026-10-03', valor: 3000, categoria: 'transporte' }),
+      despesa({ data: '2026-10-04', valor: 10000, tipo: 'retirada' }),
+    ],
+    custos: [
+      custo({
+        vencimento: '2026-10-05',
+        valorPrevisto: 8000,
+        categoria: 'impostos',
+        pagoEm: '2026-10-05',
+        valorPago: 8000,
+      }),
+      custo({
+        vencimento: '2026-10-06',
+        valorPrevisto: 100000,
+        categoria: 'aluguel',
+        pagoEm: '2026-10-06',
+        valorPago: 100000,
+      }),
+    ],
+    folha: [folhaItem({ competencia: '2026-10', pagoEm: '2026-10-05' })],
+    indicadores: [indicador(400000)],
+  };
+
+  it('monta o demonstrativo do começo ao fim, dando lucro', () => {
+    const resultado = dre('2026-10', ACERVO_DRE, HOJE);
+
+    expect(resultado.receitaBruta).toBe(850000);
+    expect(resultado.porForma.dinheiro).toBe(400000);
+    expect(resultado.fiado).toBe(50000);
+
+    // Taxas de cartão e impostos saem da receita antes de tudo.
+    expect(resultado.taxas).toBe(5000);
+    expect(resultado.impostos).toBe(8000);
+    expect(resultado.totalDeducoes).toBe(13000);
+    expect(resultado.receitaLiquida).toBe(837000);
+
+    expect(resultado.cmv).toBe(400000);
+    expect(resultado.cmvInformado).toBe(true);
+    expect(resultado.lucroBruto).toBe(437000);
+
+    expect(resultado.custosOperacionais).toBe(100000);
+    expect(resultado.folha).toBe(230400);
+    expect(resultado.despesasDiversas).toBe(3000);
+    expect(resultado.totalDespesasOperacionais).toBe(333400);
+
+    expect(resultado.resultadoOperacional).toBe(103600);
+    expect(resultado.retiradas).toBe(10000);
+    expect(resultado.resultadoLiquido).toBe(93600);
+    expect(resultado.margemLiquida).toBeGreaterThan(0);
+  });
+
+  it('fecha no prejuízo quando o CMV engole a margem', () => {
+    const resultado = dre(
+      '2026-10',
+      { ...ACERVO_DRE, indicadores: [indicador(800000)] },
+      HOJE,
+    );
+
+    expect(resultado.lucroBruto).toBe(37000);
+    expect(resultado.resultadoOperacional).toBe(-296400);
+    expect(resultado.resultadoLiquido).toBe(-306400);
+    expect(resultado.margemLiquida).toBeLessThan(0);
+  });
+
+  it('avisa quando o CMV do mês ainda não foi informado', () => {
+    const resultado = dre('2026-10', { ...ACERVO_DRE, indicadores: [] }, HOJE);
+
+    expect(resultado.cmv).toBe(0);
+    expect(resultado.cmvInformado).toBe(false);
+    // Sem CMV o lucro bruto fica superestimado — é o que a tela precisa avisar.
+    expect(resultado.lucroBruto).toBe(837000);
+  });
+
+  it('trata CMV zerado como não informado, para não haver lucro de mentira', () => {
+    const resultado = dre(
+      '2026-10',
+      { ...ACERVO_DRE, indicadores: [indicador(0)] },
+      HOJE,
+    );
+
+    expect(resultado.cmvInformado).toBe(false);
+    expect(resultado.lucroBruto).toBe(837000);
+  });
+
+  it('separa as despesas do mês sem perder nem duplicar centavo', () => {
+    const resultado = dre('2026-10', ACERVO_DRE, HOJE);
+    const resumo = resumoDoMes('2026-10', ACERVO_DRE, HOJE);
+
+    // As deduções e as despesas operacionais somam exatamente o que o
+    // relatório de caixa chamou de saída — nada fica de fora do DRE.
+    expect(resultado.taxas + resultado.despesasDiversas).toBe(resumo.saidas.despesas);
+    expect(resultado.impostos + resultado.custosOperacionais).toBe(resumo.saidas.custos);
+    expect(resultado.folha).toBe(resumo.saidas.folha);
+    expect(resultado.retiradas).toBe(resumo.saidas.retiradas);
+  });
+
+  it('mostra as compras de fornecedor só como memória, fora do resultado', () => {
+    const resultado = dre('2026-10', ACERVO, HOJE);
+    const resumo = resumoDoMes('2026-10', ACERVO, HOJE);
+
+    expect(resultado.comprasFornecedores).toBe(30000);
+    // O DRE sem CMV informado ignora a compra: o lucro bruto não a desconta.
+    expect(resultado.lucroBruto).toBe(resumo.vendas);
+    expect(resultado.cmvInformado).toBe(false);
+  });
+
+  it('não estoura com mês sem nenhum lançamento', () => {
+    const vazio = dre('2026-07', ACERVO, HOJE);
+    expect(vazio.receitaBruta).toBe(0);
+    expect(vazio.resultadoLiquido).toBe(0);
+    expect(vazio.margemBruta).toBe(0);
+    expect(vazio.margemLiquida).toBe(0);
   });
 });

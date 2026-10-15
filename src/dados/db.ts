@@ -7,6 +7,7 @@ import type {
   FolhaItem,
   Fornecedor,
   Funcionario,
+  IndicadoresDre,
 } from '../dominio/tipos';
 
 /**
@@ -27,6 +28,8 @@ export class BancoMercadoFacil extends Dexie {
   custos!: Table<CustoOperacional, string>;
   funcionarios!: Table<Funcionario, string>;
   folha!: Table<FolhaItem, string>;
+  /** Números informados à mão por mês (hoje, só o CMV do DRE). */
+  indicadores!: Table<IndicadoresDre, string>;
 
   constructor() {
     super('mercado-facil');
@@ -39,6 +42,12 @@ export class BancoMercadoFacil extends Dexie {
       custos: 'id, categoria, competencia, vencimento, pagoEm',
       funcionarios: 'id, nome, ativo',
       folha: 'id, competencia, funcionarioId, pagoEm',
+    });
+
+    // v2: o DRE precisa do CMV, que só a pessoa sabe. A competência é a chave
+    // (um registro por mês), então não há id separado nem índice extra.
+    this.version(2).stores({
+      indicadores: 'competencia',
     });
   }
 }
@@ -54,6 +63,7 @@ export const TABELAS = [
   'custos',
   'funcionarios',
   'folha',
+  'indicadores',
 ] as const;
 
 export type NomeTabela = (typeof TABELAS)[number];

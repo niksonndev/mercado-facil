@@ -313,6 +313,129 @@ export function resumoDoMes(
   };
 }
 
+export interface DreDoMes {
+  competencia: Competencia;
+  /** Vendas do mês por forma de pagamento (o dinheiro que entrou). */
+  porForma: PorForma;
+  /** Vendas no fiado: entram na receita mesmo sem ter entrado no caixa. */
+  fiado: Centavos;
+  /** Vendas brutas do mês. */
+  receitaBruta: Centavos;
+  /** Deduções sobre a venda: taxas de cartão e impostos. */
+  taxas: Centavos;
+  impostos: Centavos;
+  totalDeducoes: Centavos;
+  receitaLiquida: Centavos;
+  /**
+   * Custo da mercadoria vendida, informado à mão na tela do DRE.
+   *
+   * Zero conta como "não informado" de propósito: é melhor o DRE avisar que o
+   * lucro está inflado do que deixar um zero passar por custo real.
+   */
+  cmv: Centavos;
+  /** `false` enquanto o mês não tiver CMV informado (zero incluído). */
+  cmvInformado: boolean;
+  lucroBruto: Centavos;
+  /** Despesas que mantêm a loja aberta, sem o custo da mercadoria. */
+  custosOperacionais: Centavos;
+  folha: Centavos;
+  despesasDiversas: Centavos;
+  totalDespesasOperacionais: Centavos;
+  resultadoOperacional: Centavos;
+  /** Retiradas do dono: saem do lucro, mas não são despesa da loja. */
+  retiradas: Centavos;
+  /** O que sobrou no fim das contas: negativo é prejuízo. */
+  resultadoLiquido: Centavos;
+  /** Lucro bruto sobre a receita líquida (0 quando não houve venda). */
+  margemBruta: number;
+  /** Resultado líquido sobre a receita bruta (0 quando não houve venda). */
+  margemLiquida: number;
+  /** Compras pagas a fornecedor no mês — memória de cálculo, não é despesa. */
+  comprasFornecedores: Centavos;
+  diasLancados: number;
+}
+
+/**
+ * Demonstrativo do resultado do mês (DRE): receitas − despesas = lucro/prejuízo.
+ *
+ * A diferença central para o relatório de caixa é o CMV: no caixa, a compra de
+ * fornecedor aparece como saída; aqui ela não entra, porque comprar mercadoria
+ * é trocar dinheiro por estoque, não gastar. Quem mede o gasto da mercadoria
+ * que efetivamente saiu é o CMV informado no mês.
+ *
+ * Como o resto do app, receitas e despesas seguem o movimento do mês (regime de
+ * caixa): uma conta paga em outubro conta em outubro, mesmo vencida em setembro.
+ */
+export function dre(
+  competencia: Competencia,
+  acervo: Acervo,
+  hoje: DataISO = hojeISO(),
+): DreDoMes {
+  const resumo = resumoDoMes(competencia, acervo, hoje);
+
+  const despesasDoMes = acervo.despesas.filter(
+    (despesa) => despesa.tipo !== 'retirada' && competenciaDe(despesa.data) === competencia,
+  );
+  const somarDespesas = (filtrar: (categoria: string) => boolean): Centavos =>
+    somarCentavos(
+      despesasDoMes.filter((despesa) => filtrar(despesa.categoria)).map((d) => d.valor),
+    );
+
+  const custosPagosDoMes = acervo.custos.filter(
+    (custo) => custo.pagoEm && competenciaDe(custo.pagoEm) === competencia,
+  );
+  const somarCustos = (filtrar: (categoria: string) => boolean): Centavos =>
+    somarCentavos(
+      custosPagosDoMes
+        .filter((custo) => filtrar(custo.categoria))
+        .map((custo) => custo.valorPago ?? custo.valorPrevisto),
+    );
+
+  const taxas = somarDespesas((categoria) => categoria === 'taxas');
+  const impostos = somarCustos((categoria) => categoria === 'impostos');
+
+  const custosOperacionais = somarCustos((categoria) => categoria !== 'impostos');
+  const despesasDiversas = somarDespesas((categoria) => categoria !== 'taxas');
+  const folha = resumo.saidas.folha;
+  const retiradas = resumo.saidas.retiradas;
+
+  const indicador = acervo.indicadores.find((item) => item.competencia === competencia);
+  const cmv = indicador?.cmv ?? 0;
+
+  const receitaBruta = resumo.vendas;
+  const totalDeducoes = taxas + impostos;
+  const receitaLiquida = receitaBruta - totalDeducoes;
+  const lucroBruto = receitaLiquida - cmv;
+  const totalDespesasOperacionais = custosOperacionais + folha + despesasDiversas;
+  const resultadoOperacional = lucroBruto - totalDespesasOperacionais;
+  const resultadoLiquido = resultadoOperacional - retiradas;
+
+  return {
+    competencia,
+    porForma: resumo.porForma,
+    fiado: resumo.fiado,
+    receitaBruta,
+    taxas,
+    impostos,
+    totalDeducoes,
+    receitaLiquida,
+    cmv,
+    cmvInformado: cmv > 0,
+    lucroBruto,
+    custosOperacionais,
+    folha,
+    despesasDiversas,
+    totalDespesasOperacionais,
+    resultadoOperacional,
+    retiradas,
+    resultadoLiquido,
+    margemBruta: receitaLiquida === 0 ? 0 : lucroBruto / receitaLiquida,
+    margemLiquida: receitaBruta === 0 ? 0 : resultadoLiquido / receitaBruta,
+    comprasFornecedores: resumo.saidas.fornecedores,
+    diasLancados: resumo.diasLancados,
+  };
+}
+
 export interface VendaDoDia {
   data: DataISO;
   dia: number;
