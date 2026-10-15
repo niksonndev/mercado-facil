@@ -2,6 +2,7 @@ import type {
   CategoriaCusto,
   CategoriaDespesa,
   FormaPagamento,
+  PrazoCredito,
   TipoConta,
   TipoDespesa,
 } from './tipos';
@@ -22,6 +23,21 @@ export const FORMAS_PAGAMENTO: Opcao<FormaPagamento>[] = [
 
 /** O fiado é venda a prazo; entra no fechamento ao lado das formas de pagamento. */
 export const FIADO = { valor: 'fiado', rotulo: 'Fiado', cor: '#fb7185' } as const;
+
+/**
+ * Prazos de crédito da máquina.
+ *
+ * Os rótulos são os que o lojista lê no contrato da adquirente (D+30, primeiro
+ * dia útil do mês seguinte), não uma contagem de dias abstrata.
+ */
+export const PRAZOS_CREDITO: Opcao<PrazoCredito>[] = [
+  { valor: 'avista', rotulo: 'À vista (1 dia útil)', cor: '#34d399' },
+  { valor: '7-dias', rotulo: '7 dias', cor: '#22d3ee' },
+  { valor: '14-dias', rotulo: '14 dias', cor: '#38bdf8' },
+  { valor: '30-dias', rotulo: '30 dias', cor: '#fbbf24' },
+  { valor: '31-dias', rotulo: '31 dias', cor: '#fb923c' },
+  { valor: 'mes-seguinte', rotulo: 'Primeiro dia útil do mês seguinte', cor: '#c084fc' },
+];
 
 export const TIPOS_CONTA: Opcao<TipoConta>[] = [
   { valor: 'boleto', rotulo: 'Boleto', cor: '#38bdf8' },
@@ -69,6 +85,13 @@ function coloridor<T extends string>(opcoes: Opcao<T>[]) {
 
 export const rotuloForma = rotulador(FORMAS_PAGAMENTO);
 export const corForma = coloridor(FORMAS_PAGAMENTO);
+export function rotuloPrazoCredito(prazo: PrazoCredito): string {
+  return PRAZOS_CREDITO.find((opcao) => opcao.valor === prazo)?.rotulo ?? '30 dias';
+}
+
+/** Prazo padrão de quem não mexeu nesse campo: o D+30 mais comum. */
+export const PRAZO_CREDITO_PADRAO: PrazoCredito = '30-dias';
+
 export const rotuloTipoConta = rotulador(TIPOS_CONTA);
 export const corTipoConta = coloridor(TIPOS_CONTA);
 export const rotuloTipoDespesa = rotulador(TIPOS_DESPESA);

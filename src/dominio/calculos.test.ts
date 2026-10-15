@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  agendaRecebiveis,
   calcularFolha,
   chaveFechamento,
   compromissosPendentes,
+  dataPrevistaCredito,
   dinheiroEsperadoEmCaixa,
   dre,
   fechamentosPorDia,
@@ -11,6 +13,7 @@ import {
   resumoDoMes,
   resumoFechamento,
   resumoPorPonto,
+  resumoRecebiveis,
   rotuloPonto,
   saidasEmDinheiro,
   situacaoDoCompromisso,
@@ -36,6 +39,9 @@ function fechamento(campos: Partial<FechamentoCaixa> & { data: string }): Fecham
     pontoId: null,
     responsavelId: null,
     responsavelNome: '',
+    prazoCredito: '30-dias',
+    creditoRecebidoEm: null,
+    creditoRecebidoValor: null,
     fundoInicial: 0,
     dinheiro: 0,
     pix: 0,
@@ -524,5 +530,73 @@ describe('pontos de venda', () => {
     expect(rotuloPonto([caixa1], 'p1')).toBe('Caixa 1');
     // Ponto apagado depois do fechamento: o histórico não pode virar "undefined".
     expect(rotuloPonto([caixa1], 'p9')).toBe('Caixa removido');
+  });
+});
+
+describe('recebíveis das máquinas', () => {
+  it('calcula o dia em que o crédito cai em cada prazo', () => {
+    // 01/10/2026 é quinta-feira.
+    expect(dataPrevistaCredito('2026-10-01', '7-dias')).toBe('2026-10-08');
+    expect(dataPrevistaCredito('2026-10-01', '14-dias')).toBe('2026-10-15');
+    expect(dataPrevistaCredito('2026-10-01', '30-dias')).toBe('2026-10-31');
+
+    // Sexta mais um dia cai no sábado: o crédito à vista entra na segunda.
+    expect(dataPrevistaCredito('2026-10-09', 'avista')).toBe('2026-10-12');
+
+    // Primeiro dia útil do mês seguinte: 01/11 é domingo, então cai em 02/11.
+    expect(dataPrevistaCredito('2026-10-01', 'mes-seguinte')).toBe('2026-11-02');
+    expect(dataPrevistaCredito('2026-10-20', 'mes-seguinte')).toBe('2026-11-02');
+  });
+
+  const ACERVO_CREDITO: Acervo = {
+    fechamentos: [
+      // Venceu em 08/10 e não caiu: está atrasado.
+      fechamento({ id: 'c1', data: '2026-10-01', credito: 10000, prazoCredito: '7-dias' }),
+      fechamento({ id: 'c2', data: '2026-10-10', credito: 20000, prazoCredito: '30-dias' }),
+      // Já recebido, e a máquina depositou menos que a venda (taxa).
+      fechamento({
+        id: 'c3',
+        data: '2026-10-12',
+        credito: 5000,
+        prazoCredito: '7-dias',
+        creditoRecebidoEm: '2026-10-19',
+        creditoRecebidoValor: 4800,
+      }),
+      // Dia sem venda no crédito não gera recebível.
+      fechamento({ id: 'c4', data: '2026-10-13', dinheiro: 9000 }),
+    ],
+    contas: [],
+    despesas: [],
+    custos: [],
+    folha: [],
+    indicadores: [],
+  };
+
+  it('monta a agenda só com os dias que venderam no crédito', () => {
+    const agenda = agendaRecebiveis(ACERVO_CREDITO, HOJE);
+
+    expect(agenda.map((item) => [item.fechamentoId, item.dataPrevista, item.atrasado])).toEqual([
+      ['c1', '2026-10-08', true],
+      ['c3', '2026-10-19', false],
+      ['c2', '2026-11-09', false],
+    ]);
+  });
+
+  it('separa o que vai cair, o que atrasou e o que já caiu', () => {
+    const resumo = resumoRecebiveis(agendaRecebiveis(ACERVO_CREDITO, HOJE));
+
+    expect(resumo.aReceber).toBe(30000);
+    expect(resumo.atrasado).toBe(10000);
+    expect(resumo.abertos.length).toBe(2);
+    // O que a máquina depositou, não o que foi vendido.
+    expect(resumo.recebido).toBe(4800);
+  });
+
+  it('não considera atrasado o crédito já recebido', () => {
+    const recebidos = agendaRecebiveis(ACERVO_CREDITO, HOJE).filter(
+      (item) => item.recebidoEm,
+    );
+
+    expect(recebidos.map((item) => item.atrasado)).toEqual([false]);
   });
 });

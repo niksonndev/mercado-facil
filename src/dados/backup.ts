@@ -14,6 +14,7 @@ import type {
   Funcionario,
   IndicadoresDre,
   PontoDeVenda,
+  PrazoCredito,
   TipoConta,
   TipoDespesa,
 } from '../dominio/tipos';
@@ -118,6 +119,15 @@ const id = (valor: unknown): string =>
 const momento = (valor: unknown): string =>
   typeof valor === 'string' && valor ? valor : new Date().toISOString();
 
+const PRAZOS = [
+  'avista',
+  '7-dias',
+  '14-dias',
+  '30-dias',
+  '31-dias',
+  'mes-seguinte',
+] as const;
+
 function lerFechamento(bruto: Record<string, unknown>): FechamentoCaixa | null {
   const data = comoData(bruto.data);
   if (!data) return null; // sem data o fechamento não tem onde entrar
@@ -134,6 +144,10 @@ function lerFechamento(bruto: Record<string, unknown>): FechamentoCaixa | null {
     debito: comoCentavos(bruto.debito),
     credito: comoCentavos(bruto.credito),
     fiado: comoCentavos(bruto.fiado),
+    prazoCredito: comoOpcao<PrazoCredito>(bruto.prazoCredito, PRAZOS, '30-dias'),
+    creditoRecebidoEm: comoData(bruto.creditoRecebidoEm),
+    creditoRecebidoValor:
+      bruto.creditoRecebidoValor == null ? null : comoCentavos(bruto.creditoRecebidoValor),
     observacao: comoTexto(bruto.observacao),
     criadoEm: momento(bruto.criadoEm),
     atualizadoEm: momento(bruto.atualizadoEm),

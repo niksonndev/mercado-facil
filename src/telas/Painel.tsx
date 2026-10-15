@@ -1,15 +1,17 @@
 import { useState } from 'react';
 import {
+  agendaRecebiveis,
   despesasDoDia,
   fechamentosPorDia,
   pendencias,
   resumoDoMes,
   resumoFechamento,
+  resumoRecebiveis,
   rotuloPonto,
   saidasEmDinheiro,
   type CompromissoPendente,
 } from '../dominio/calculos';
-import { FIADO, FORMAS_PAGAMENTO } from '../dominio/categorias';
+import { FIADO, FORMAS_PAGAMENTO, rotuloPrazoCredito } from '../dominio/categorias';
 import {
   competenciaDe,
   formatarData,
@@ -25,6 +27,7 @@ import { useAcervo, useFuncionarios, usePontos } from '../dados/hooks';
 import { pagarCompromisso } from '../dados/pagamentos';
 import { fechamentoVazio, novoFechamento } from '../dados/repositorio';
 import { FormularioFechamento } from '../componentes/FormularioFechamento';
+import { FormularioRecebimento } from '../componentes/FormularioRecebimento';
 import { GavetaPagamento, type Pagamento } from '../componentes/GavetaPagamento';
 import {
   Aviso,
@@ -50,6 +53,7 @@ export function Painel() {
   const pontos = usePontos() ?? [];
   const funcionarios = useFuncionarios() ?? [];
   const [editando, definirEditando] = useState<FechamentoCaixa | null>(null);
+  const [recebendo, definirRecebendo] = useState<FechamentoCaixa | null>(null);
   const [pagando, definirPagando] = useState<CompromissoPendente | null>(null);
 
   const hoje = hojeISO();
@@ -89,6 +93,14 @@ export function Painel() {
 
   const proximas = alertas.proximas.slice(0, 4);
   const destaque = [...alertas.atrasadas, ...alertas.vencemHoje, ...proximas].slice(0, 5);
+
+  const maquinas = resumoRecebiveis(agendaRecebiveis(acervo, hoje));
+  /** O que a máquina vai creditar e ainda não caiu. */
+  const aCair = [...maquinas.atrasados, ...maquinas.proximos].slice(0, 4);
+  const abrirRecebimento = (fechamentoId: Id) => {
+    const fechamento = acervo.fechamentos.find((item) => item.id === fechamentoId);
+    if (fechamento) definirRecebendo(fechamento);
+  };
 
   return (
     <>
@@ -274,6 +286,54 @@ export function Painel() {
         </Cartao>
       )}
 
+      {(maquinas.aReceber > 0 || maquinas.recebido > 0) && (
+        <Cartao titulo="A receber das máquinas">
+          <Ficha
+            rotulo="Ainda vai cair na conta"
+            valor={formatarDinheiro(maquinas.aReceber)}
+            cor="var(--acento)"
+          />
+          <Ficha rotulo="Já caiu" valor={formatarDinheiro(maquinas.recebido)} />
+
+          {maquinas.atrasado > 0 && (
+            <Aviso tom="negativo">
+              <strong>{formatarDinheiro(maquinas.atrasado)}</strong> deveria ter caído na
+              conta e não caiu.
+            </Aviso>
+          )}
+
+          {aCair.length > 0 && (
+            <div className="lista">
+              {aCair.map((item) => (
+                <LinhaLista
+                  key={item.fechamentoId}
+                  titulo={`Crédito de ${formatarData(item.data)}`}
+                  etiqueta={
+                    item.atrasado
+                      ? { texto: 'atrasado', cor: 'var(--negativo)' }
+                      : { texto: rotuloPrazo(item.dataPrevista, hoje), cor: 'var(--suave)' }
+                  }
+                  detalhe={`cai ${formatarData(item.dataPrevista)} · ${rotuloPrazoCredito(
+                    item.prazo,
+                  )}`}
+                  valor={formatarDinheiro(item.valor)}
+                  acoes={
+                    <Botao pequeno onClick={() => abrirRecebimento(item.fechamentoId)}>
+                      Recebido
+                    </Botao>
+                  }
+                />
+              ))}
+            </div>
+          )}
+
+          <p style={{ color: 'var(--suave)', fontSize: '0.78rem', marginBottom: 0 }}>
+            A venda entra no caixa no dia em que aconteceu; esta lista é só quando o
+            dinheiro da máquina aparece na conta.
+          </p>
+        </Cartao>
+      )}
+
       <Cartao titulo="Atalhos">
         <div className="grupo-botoes">
           <Botao pequeno onClick={() => irPara('despesas')}>
@@ -308,6 +368,14 @@ export function Painel() {
           valorSugerido={pagando.valor}
           aoConfirmar={(pagamento) => registrarPagamento(pagamento, pagando)}
           aoFechar={() => definirPagando(null)}
+        />
+      )}
+
+      {recebendo && (
+        <FormularioRecebimento
+          key={recebendo.id}
+          registro={recebendo}
+          aoFechar={() => definirRecebendo(null)}
         />
       )}
 

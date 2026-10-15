@@ -1,5 +1,6 @@
 import { hojeISO } from '../dominio/datas';
 import { vencimentoPadraoFolha } from '../dominio/calculos';
+import { PRAZO_CREDITO_PADRAO } from '../dominio/categorias';
 import type {
   Competencia,
   Conta,
@@ -14,6 +15,7 @@ import type {
   Id,
   IndicadoresDre,
   PontoDeVenda,
+  PrazoCredito,
 } from '../dominio/tipos';
 import { db } from './db';
 
@@ -28,6 +30,7 @@ export function fechamentoVazio(
   data: DataISO = hojeISO(),
   pontoId: Id | null = null,
   responsavel: Funcionario | null = null,
+  prazoCredito: PrazoCredito = PRAZO_CREDITO_PADRAO,
 ): Nascimento<FechamentoCaixa> {
   return {
     data,
@@ -40,6 +43,9 @@ export function fechamentoVazio(
     debito: 0,
     credito: 0,
     fiado: 0,
+    prazoCredito,
+    creditoRecebidoEm: null,
+    creditoRecebidoValor: null,
     observacao: '',
   };
 }

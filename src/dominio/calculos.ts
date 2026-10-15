@@ -1,5 +1,5 @@
 import { FORMAS_PAGAMENTO } from './categorias';
-import { adicionarMeses, competenciaDe, diferencaEmDias, hojeISO } from './datas';
+import { adicionarDias, adicionarMeses, competenciaDe, diferencaEmDias, hojeISO, paraDate } from './datas';
 import { somarCentavos } from './dinheiro';
 import type {
   Acervo,
@@ -12,6 +12,7 @@ import type {
   FormaPagamento,
   Id,
   PontoDeVenda,
+  PrazoCredito,
   Situacao,
 } from './tipos';
 
@@ -472,6 +473,124 @@ export function vendasPorDia(
   }
 
   return [...porDia.values()].sort((a, b) => a.dia - b.dia);
+}
+
+/**
+ * Quando o dinheiro das vendas no crédito cai na conta.
+ *
+ * O "primeiro dia útil do mês seguinte" é o que a maioria das adquirentes usa
+ * para quem vende no crédito parcelado: a data pula o fim de semana, mas não
+ * considera feriado, o que é aceitável para uma previsão.
+ */
+export function dataPrevistaCredito(data: DataISO, prazo: PrazoCredito): DataISO {
+  switch (prazo) {
+    case 'avista':
+      return proximoDiaUtil(adicionarDias(data, 1));
+    case '7-dias':
+      return adicionarDias(data, 7);
+    case '14-dias':
+      return adicionarDias(data, 14);
+    case '31-dias':
+      return adicionarDias(data, 31);
+    case 'mes-seguinte':
+      return proximoDiaUtil(`${adicionarMeses(competenciaDe(data), 1)}-01`);
+    case '30-dias':
+    default:
+      return adicionarDias(data, 30);
+  }
+}
+
+/** Anda para a frente até cair em um dia de semana. */
+export function proximoDiaUtil(data: DataISO): DataISO {
+  let dia = data;
+  while ([0, 6].includes(paraDate(dia).getDay())) {
+    dia = adicionarDias(dia, 1);
+  }
+  return dia;
+}
+
+export interface Recebivel {
+  fechamentoId: Id;
+  /** Dia da venda que gerou o crédito. */
+  data: DataISO;
+  pontoId: Id | null;
+  valor: Centavos;
+  prazo: PrazoCredito;
+  /** Dia em que o dinheiro deve cair na conta. */
+  dataPrevista: DataISO;
+  recebidoEm: DataISO | null;
+  /** Quanto a adquirente depositou; nulo cai igual ao valor da venda. */
+  valorRecebido: Centavos | null;
+  /** Dias até cair; negativo quando a data prevista já passou. */
+  diasParaCair: number;
+  atrasado: boolean;
+}
+
+/**
+ * Agenda do que as máquinas ainda vão creditar.
+ *
+ * O app já conta a venda no dia em que ela aconteceu (regime de caixa); esta
+ * lista é a previsão de quando o dinheiro do crédito aparece na conta, para o
+ * lojista não achar que o saldo do banco está errado.
+ */
+export function agendaRecebiveis(
+  acervo: Acervo,
+  hoje: DataISO = hojeISO(),
+): Recebivel[] {
+  return acervo.fechamentos
+    .filter((fechamento) => fechamento.credito > 0)
+    .map((fechamento) => {
+      const dataPrevista = dataPrevistaCredito(
+        fechamento.data,
+        fechamento.prazoCredito,
+      );
+      const diasParaCair = diferencaEmDias(hoje, dataPrevista);
+
+      return {
+        fechamentoId: fechamento.id,
+        data: fechamento.data,
+        pontoId: fechamento.pontoId,
+        valor: fechamento.credito,
+        prazo: fechamento.prazoCredito,
+        dataPrevista,
+        recebidoEm: fechamento.creditoRecebidoEm,
+        valorRecebido: fechamento.creditoRecebidoValor,
+        diasParaCair,
+        atrasado: !fechamento.creditoRecebidoEm && diasParaCair < 0,
+      };
+    })
+    .sort((a, b) => a.dataPrevista.localeCompare(b.dataPrevista));
+}
+
+export interface ResumoRecebiveis {
+  /** Ainda não caiu na conta. */
+  aReceber: Centavos;
+  /** Deveria ter caído e não caiu. */
+  atrasado: Centavos;
+  atrasados: Recebivel[];
+  /** Cai nos próximos 7 dias. */
+  proximos: Recebivel[];
+  /** Já caiu na conta. */
+  recebido: Centavos;
+  abertos: Recebivel[];
+}
+
+export function resumoRecebiveis(recebiveis: Recebivel[]): ResumoRecebiveis {
+  const abertos = recebiveis.filter((item) => !item.recebidoEm);
+  const atrasados = abertos.filter((item) => item.atrasado);
+
+  return {
+    aReceber: somarCentavos(abertos.map((item) => item.valor)),
+    atrasado: somarCentavos(atrasados.map((item) => item.valor)),
+    atrasados,
+    proximos: abertos.filter((item) => item.diasParaCair >= 0 && item.diasParaCair <= 7),
+    recebido: somarCentavos(
+      recebiveis
+        .filter((item) => item.recebidoEm)
+        .map((item) => item.valorRecebido ?? item.valor),
+    ),
+    abertos,
+  };
 }
 
 /** Total da folha (custo para a empresa) em uma competência. */

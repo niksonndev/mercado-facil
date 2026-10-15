@@ -1,4 +1,4 @@
-import { vencimentoPadraoFolha } from '../dominio/calculos';
+import { dataPrevistaCredito, vencimentoPadraoFolha } from '../dominio/calculos';
 import { adicionarDias, adicionarMeses, hojeISO, mesAtual } from '../dominio/datas';
 import type {
   Conta,
@@ -11,6 +11,7 @@ import type {
   Funcionario,
   IndicadoresDre,
   PontoDeVenda,
+  PrazoCredito,
 } from '../dominio/tipos';
 import { db } from './db';
 
@@ -113,6 +114,10 @@ export async function carregarExemplos(hoje: DataISO = hojeISO()): Promise<void>
     const fatia = fimDeSemana && caixa2 ? 0.6 : 1;
     const reparte = (valor: number) => Math.round(valor * fatia);
 
+    // Duas máquinas, dois prazos: o caixa 1 recebe em 7 dias, o do salão em 30.
+    const prazoCaixa1: PrazoCredito = '7-dias';
+    const previsto1 = dataPrevistaCredito(data, prazoCaixa1);
+
     fechamentos.push({
       id: id(),
       data,
@@ -125,6 +130,10 @@ export async function carregarExemplos(hoje: DataISO = hojeISO()): Promise<void>
       debito: reparte(debito),
       credito: reparte(credito),
       fiado: reparte(fiado),
+      prazoCredito: prazoCaixa1,
+      // O que já passou da data prevista já caiu na conta.
+      creditoRecebidoEm: previsto1 < hoje ? previsto1 : null,
+      creditoRecebidoValor: previsto1 < hoje ? reparte(credito) : null,
       observacao: '',
       criadoEm: agora,
       atualizadoEm: agora,
@@ -143,6 +152,9 @@ export async function carregarExemplos(hoje: DataISO = hojeISO()): Promise<void>
         debito: debito - reparte(debito),
         credito: credito - reparte(credito),
         fiado: fiado - reparte(fiado),
+        prazoCredito: '30-dias',
+        creditoRecebidoEm: null,
+        creditoRecebidoValor: null,
         observacao: 'Caixa do salão',
         criadoEm: agora,
         atualizadoEm: agora,

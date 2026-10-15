@@ -33,6 +33,20 @@ export interface PontoDeVenda {
   criadoEm: string;
 }
 
+/**
+ * Prazo que a máquina leva para creditar a venda.
+ *
+ * É o que separa "vendeu" de "entrou na conta": a venda no crédito entra no
+ * caixa do dia, mas o dinheiro só aparece na conta na data prevista.
+ */
+export type PrazoCredito =
+  | 'avista'
+  | '7-dias'
+  | '14-dias'
+  | '30-dias'
+  | '31-dias'
+  | 'mes-seguinte';
+
 /** Fechamento de caixa de um dia (o que o mercadinho anota à noite). */
 export interface FechamentoCaixa {
   id: Id;
@@ -58,6 +72,12 @@ export interface FechamentoCaixa {
   credito: Centavos;
   /** Total vendido a prazo (caderneta). */
   fiado: Centavos;
+  /** Prazo combinado com a máquina para as vendas no crédito. */
+  prazoCredito: PrazoCredito;
+  /** Dia em que o crédito do dia caiu na conta; nulo enquanto não caiu. */
+  creditoRecebidoEm: DataISO | null;
+  /** Quanto a adquirente depositou, que pode ser menor que a venda (taxa). */
+  creditoRecebidoValor: Centavos | null;
   observacao: string;
   criadoEm: string;
   atualizadoEm: string;

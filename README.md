@@ -20,7 +20,7 @@ primeira visita.
 | **Custos** | Aluguel, energia, água, internet, contabilidade e afins, por competência, com repetição automática dos recorrentes para o mês seguinte. |
 | **Folha** | Cadastro de funcionários e folha mês a mês, separando o líquido do funcionário do custo da empresa (FGTS e encargos). |
 | **Fornecedores** | Cadastro simples, com o total em aberto de cada um. |
-| **Relatórios** | Resultado do mês, vendas por dia, de onde veio e para onde foi o dinheiro, e o que continua em aberto. |
+| **Relatórios** | Resultado do mês, vendas por dia, de onde veio e para onde foi o dinheiro, o que continua em aberto e a agenda do crédito das máquinas (o que ainda vai cair, o que atrasou e o que já caiu). |
 | **DRE do mês** | Lucro ou prejuízo de verdade: vendas, taxas de cartão e impostos, custo da mercadoria vendida, custos, folha e retiradas, com margens e opção de imprimir. |
 | **Dados** | Exportar e restaurar backup em JSON, carregar um mês de exemplo e apagar tudo. |
 
@@ -67,6 +67,14 @@ pnpm preview      # serve o build: aqui o service worker é exercitado de verdad
   `data|ponto`, e é ela que impede o segundo fechamento do mesmo caixa no mesmo
   dia. Apagar um ponto não apaga o histórico: os fechamentos antigos mostram
   "caixa removido".
+- **A venda no crédito entra no caixa no dia em que foi vendida; o dinheiro da
+  máquina entra na conta na data prevista.** São duas perguntas diferentes, e o
+  app responde as duas: o relatório mostra o que foi vendido, e a agenda "a
+  receber das máquinas" mostra quando o crédito cai (prazo combinado com a
+  adquirente, por dia fechado). Dá para dar baixa quando o dinheiro chega, e o
+  valor depositado é guardado separado da venda, porque a adquirente desconta a
+  taxa antes de creditar. Nada disso é gravado como valor derivado: a data
+  prevista é calculada a partir da data do fechamento e do prazo.
 - **Formas de pagamento** viram cores em `src/dominio/categorias.ts`; etiqueta,
   legenda e relatório leem de lá, então mudar um rótulo é mexer em um lugar só.
 
