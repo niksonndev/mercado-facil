@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { CATEGORIAS_DESPESA, TIPOS_DESPESA, rotuloForma } from '../dominio/categorias';
-import { competenciaDe, formatarData, hojeISO, mesAtual, nomeDoMes } from '../dominio/datas';
+import { adicionarMeses, competenciaDe, formatarData, hojeISO, mesAtual, nomeDoMes } from '../dominio/datas';
 import { formatarDinheiro, somarCentavos } from '../dominio/dinheiro';
 import type { Competencia, Despesa, TipoDespesa } from '../dominio/tipos';
 import { useAcervo } from '../dados/hooks';
-import { novaDespesa, removerDespesa } from '../dados/repositorio';
+import { despesaDoProximoMes, novaDespesa, removerDespesa, salvarDespesa } from '../dados/repositorio';
 import { Botao, Cartao, Estatistica, Vazio } from '../componentes/base';
 import { GrupoFiltros, LinhaLista } from '../componentes/lista';
 import { FormularioDespesa } from '../componentes/FormularioDespesa';
@@ -21,7 +21,9 @@ export function despesaVazia(data: string): Despesa {
     data,
     formaPagamento: 'dinheiro',
     retiradaDoCaixa: false,
+    fixa: false,
     beneficiario: '',
+    anexo: '',
     observacao: '',
   });
 }
@@ -53,6 +55,26 @@ export function Despesas() {
 
   const visiveis = doMes.filter((despesa) => filtro === 'todas' || despesa.tipo === filtro);
   const competenciasComDados = acervo.despesas.map((despesa) => competenciaDe(despesa.data));
+
+  const proxima = adicionarMeses(competencia, 1);
+  const jaNaProxima = new Set(
+    acervo.despesas
+      .filter((despesa) => competenciaDe(despesa.data) === proxima)
+      .map((despesa) => despesa.descricao.trim().toLowerCase()),
+  );
+  /** Fixas do mês aberto que ainda não foram lançadas no mês seguinte. */
+  const fixasAFaltar = doMes.filter(
+    (despesa) => despesa.fixa && !jaNaProxima.has(despesa.descricao.trim().toLowerCase()),
+  );
+
+  const repetir = (despesa: Despesa, alvo: Competencia) =>
+    salvarDespesa(despesaDoProximoMes(despesa, alvo));
+
+  const lancarFixas = async () => {
+    for (const despesa of fixasAFaltar) {
+      await repetir(despesa, proxima);
+    }
+  };
 
   return (
     <>
@@ -88,6 +110,11 @@ export function Despesas() {
         >
           Nova despesa
         </Botao>
+        {fixasAFaltar.length > 0 && (
+          <Botao onClick={() => void lancarFixas()}>
+            Lançar {fixasAFaltar.length} fixa(s) em {nomeDoMes(proxima)}
+          </Botao>
+        )}
       </div>
 
       <GrupoFiltros
@@ -125,6 +152,8 @@ export function Despesas() {
                   CATEGORIAS_DESPESA.find((c) => c.valor === despesa.categoria)?.rotulo,
                   despesa.beneficiario,
                   despesa.retiradaDoCaixa ? 'saiu do caixa' : '',
+                  despesa.fixa ? 'fixa' : '',
+                  despesa.anexo ? 'com foto' : '',
                 ]
                   .filter(Boolean)
                   .join(' · ')}
@@ -132,13 +161,22 @@ export function Despesas() {
                 corValor="var(--negativo)"
                 aoAbrir={() => definirEditando(despesa)}
                 acoes={
-                  <Botao
-                    pequeno
-                    variante="fantasma"
-                    onClick={() => removerDespesa(despesa.id)}
-                  >
-                    Excluir
-                  </Botao>
+                  <>
+                    <Botao
+                      pequeno
+                      variante="fantasma"
+                      onClick={() => void repetir(despesa, proxima)}
+                    >
+                      Repetir
+                    </Botao>
+                    <Botao
+                      pequeno
+                      variante="fantasma"
+                      onClick={() => removerDespesa(despesa.id)}
+                    >
+                      Excluir
+                    </Botao>
+                  </>
                 }
               />
             ))}

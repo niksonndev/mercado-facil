@@ -15,8 +15,8 @@ primeira visita.
 | --- | --- |
 | **Painel** | O que fazer hoje: fechar o caixa, o que venceu, quanto entrou e quanto saiu no mês. |
 | **Caixa** | Fundo de caixa (troco do início do dia) e fechamento do dia por dinheiro, PIX, débito, crédito e fiado. Um fechamento por dia e por ponto de venda (caixa 1, caixa 2), cada um com o funcionário que respondeu por ele. Mostra o que deveria estar na gaveta e avisa os dias do mês que ficaram sem fechamento. |
-| **Contas** | Boletos de fornecedor (vencimento, valor, fornecedor), cheques pré-datados (número, banco, bom para), compras à vista e faturas do cartão da empresa (vencimento calculado pelo fechamento do cartão). Baixa de pagamento com data, valor e forma. |
-| **Despesas** | Retirada de caixa e pagamentos diversos, com a marcação de "saiu do dinheiro da gaveta" que entra na conferência do caixa. |
+| **Contas** | Boletos de fornecedor (vencimento, valor, fornecedor), cheques pré-datados (número, banco, bom para), compras à vista e faturas do cartão da empresa (vencimento calculado pelo fechamento do cartão). Baixa de pagamento com data, valor e forma, e foto do boleto anexada. |
+| **Despesas** | Retirada de caixa e pagamentos diversos, com a marcação de "saiu do dinheiro da gaveta" que entra na conferência do caixa, a marcação de despesa fixa (que a tela repete no mês seguinte) e a foto do comprovante anexada. |
 | **Custos** | Aluguel, energia, água, internet, contabilidade e afins, por competência, com repetição automática dos recorrentes para o mês seguinte. |
 | **Folha** | Cadastro de funcionários e folha mês a mês, separando o líquido do funcionário do custo da empresa (FGTS e encargos). |
 | **Banco e cartões** | Cadastro dos cartões da empresa (dia de fechamento e de vencimento) para o app calcular a fatura e apontar o melhor dia de compra. Cadastro da conta bancária e a conferência do mês: o saldo que o app espera contra o saldo que o extrato mostrou. |
@@ -76,6 +76,16 @@ pnpm preview      # serve o build: aqui o service worker é exercitado de verdad
   valor depositado é guardado separado da venda, porque a adquirente desconta a
   taxa antes de creditar. Nada disso é gravado como valor derivado: a data
   prevista é calculada a partir da data do fechamento e do prazo.
+- **A foto do comprovante é reduzida antes de ser gravada.** Ela vive no
+  IndexedDB do aparelho e viaja dentro do backup em JSON, então guardar a foto
+  original de 4 MB deixaria o backup imprestável: `src/dados/anexo.ts` corta no
+  maior lado de 1200 px em JPEG, recusa o que não é imagem e avisa quanto pesa.
+  O anexo é a porta de entrada do extrator de comprovante: quando um estiver
+  registrado, é o arquivo daqui que ele recebe.
+- **Despesa fixa é um lançamento por mês, não um lançamento que se repete
+  sozinho.** O valor muda todo mês, então quem decide é a pessoa: a tela oferece
+  lançar as fixas na competência seguinte com um clique, e cada mês continua
+  tendo o seu registro (corrigir um mês não mexe no outro).
 - **Formas de pagamento** viram cores em `src/dominio/categorias.ts`; etiqueta,
   legenda e relatório leem de lá, então mudar um rótulo é mexer em um lugar só.
 - **A conferência do extrato é uma aproximação declarada, não um extrato.** O app

@@ -7,6 +7,7 @@ import {
 import { hojeISO } from '../dominio/datas';
 import type { Despesa, TipoDespesa } from '../dominio/tipos';
 import { salvarDespesa } from '../dados/repositorio';
+import { Anexo } from './Anexo';
 import { Botao } from './base';
 import {
   AreaTexto,
@@ -179,6 +180,15 @@ export function FormularioDespesa({ registro, aoFechar }: PropsFormularioDespesa
         marcado={rascunho.retiradaDoCaixa}
         aoMudar={(marcado) => atualizar('retiradaDoCaixa', marcado)}
       />
+
+      <Marcar
+        rotulo="Despesa fixa"
+        dica="todo mês a tela oferece lançar essa despesa no mês seguinte"
+        marcado={rascunho.fixa}
+        aoMudar={(marcado) => atualizar('fixa', marcado)}
+      />
+
+      <Anexo valor={rascunho.anexo} aoMudar={(valor) => atualizar('anexo', valor)} />
 
       <Campo rotulo="Observação">
         {(id) => (

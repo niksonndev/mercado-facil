@@ -5,6 +5,7 @@ import { formatarDinheiro } from '../dominio/dinheiro';
 import { hojeISO } from '../dominio/datas';
 import type { Cartao, Conta, Fornecedor, TipoConta } from '../dominio/tipos';
 import { salvarConta } from '../dados/repositorio';
+import { Anexo } from './Anexo';
 import { Botao, Ficha } from './base';
 import {
   AreaTexto,
@@ -331,6 +332,12 @@ export function FormularioConta({
           </div>
         </>
       )}
+
+      <Anexo
+        valor={rascunho.anexo}
+        aoMudar={(valor) => atualizar('anexo', valor)}
+        rotulo="Anexar o boleto (foto ou print)"
+      />
 
       <Campo rotulo="Observação">
         {(id) => (

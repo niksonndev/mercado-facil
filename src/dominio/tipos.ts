@@ -129,6 +129,8 @@ export interface Conta {
   /** Cartão da empresa, quando o lançamento é uma fatura. */
   cartaoId: Id | null;
   cartaoNome: string;
+  /** Foto do comprovante em data URL; vazio quando não tem. */
+  anexo: string;
   pagoEm: DataISO | null;
   valorPago: Centavos | null;
   formaPagamento: FormaPagamento | null;
@@ -158,7 +160,17 @@ export interface Despesa {
   formaPagamento: FormaPagamento;
   /** Retirada de caixa desconta do dinheiro que deveria estar na gaveta. */
   retiradaDoCaixa: boolean;
+  /**
+   * Despesa que se repete todo mês (aluguel de equipamento, assinatura).
+   *
+   * A tela oferece lançar as fixas na competência seguinte: quem paga todo mês
+   * não deveria digitar de novo, mas o lançamento continua sendo um por mês,
+   * porque o valor muda.
+   */
+  fixa: boolean;
   beneficiario: string;
+  /** Foto do comprovante em data URL; vazio quando não tem. */
+  anexo: string;
   observacao: string;
   criadoEm: string;
 }
@@ -229,6 +241,8 @@ export interface CustoOperacional {
   pagoEm: DataISO | null;
   valorPago: Centavos | null;
   formaPagamento: FormaPagamento | null;
+  /** Foto do comprovante em data URL; vazio quando não tem. */
+  anexo: string;
   observacao: string;
   criadoEm: string;
   atualizadoEm: string;

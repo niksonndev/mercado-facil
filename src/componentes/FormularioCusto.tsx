@@ -4,6 +4,7 @@ import { hojeISO, mesAtual } from '../dominio/datas';
 import { formatarDinheiro } from '../dominio/dinheiro';
 import type { CategoriaCusto, CustoOperacional } from '../dominio/tipos';
 import { salvarCusto } from '../dados/repositorio';
+import { Anexo } from './Anexo';
 import { Botao, Ficha } from './base';
 import {
   AreaTexto,
@@ -214,6 +215,12 @@ export function FormularioCusto({ registro, aoFechar }: PropsFormularioCusto) {
           </div>
         </>
       )}
+
+      <Anexo
+        valor={rascunho.anexo}
+        aoMudar={(valor) => atualizar('anexo', valor)}
+        rotulo="Anexar a conta (foto ou print)"
+      />
 
       <Campo rotulo="Observação">
         {(id) => (

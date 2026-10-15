@@ -1,4 +1,4 @@
-import { hojeISO } from '../dominio/datas';
+import { hojeISO, ultimoDiaDoMes } from '../dominio/datas';
 import { vencimentoPadraoFolha } from '../dominio/calculos';
 import { PRAZO_CREDITO_PADRAO } from '../dominio/categorias';
 import type {
@@ -146,6 +146,7 @@ export function contaVazia(fornecedor?: Fornecedor): Nascimento<Conta> {
     chequeBanco: '',
     cartaoId: null,
     cartaoNome: '',
+    anexo: '',
     pagoEm: null,
     valorPago: null,
     formaPagamento: null,
@@ -196,6 +197,34 @@ export function novaDespesa(dados: Nascimento<Despesa>): Despesa {
 
 export const salvarDespesa = (registro: Despesa) => db.despesas.put(registro);
 export const removerDespesa = (id: Id) => db.despesas.delete(id);
+
+/**
+ * Cópia da despesa fixa para a competência seguinte, ainda por pagar.
+ *
+ * A data vira o mesmo dia do mês seguinte (29, 30 e 31 caem no último dia do
+ * mês quando ele é mais curto), porque é assim que a conta volta.
+ */
+export function despesaDoProximoMes(
+  despesa: Despesa,
+  competencia: Competencia,
+): Despesa {
+  const ultimoDia = Number(ultimoDiaDoMes(competencia).slice(8));
+  const dia = Math.min(Number(despesa.data.slice(8)), ultimoDia);
+
+  return novaDespesa({
+    tipo: despesa.tipo,
+    descricao: despesa.descricao,
+    categoria: despesa.categoria,
+    valor: despesa.valor,
+    data: `${competencia}-${String(dia).padStart(2, '0')}`,
+    formaPagamento: despesa.formaPagamento,
+    retiradaDoCaixa: despesa.retiradaDoCaixa,
+    fixa: despesa.fixa,
+    beneficiario: despesa.beneficiario,
+    anexo: '',
+    observacao: despesa.observacao,
+  });
+}
 
 export function novoCusto(dados: Nascimento<CustoOperacional>): CustoOperacional {
   const momento = agora();

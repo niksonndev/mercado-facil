@@ -175,6 +175,7 @@ function lerConta(bruto: Record<string, unknown>): Conta | null {
     chequeBanco: comoTexto(bruto.chequeBanco),
     cartaoId: typeof bruto.cartaoId === 'string' ? bruto.cartaoId : null,
     cartaoNome: comoTexto(bruto.cartaoNome),
+    anexo: comoTexto(bruto.anexo),
     pagoEm: comoData(bruto.pagoEm),
     valorPago: bruto.valorPago == null ? null : comoCentavos(bruto.valorPago),
     formaPagamento:
@@ -200,7 +201,9 @@ function lerDespesa(bruto: Record<string, unknown>): Despesa | null {
     data,
     formaPagamento: comoOpcao<FormaPagamento>(bruto.formaPagamento, FORMAS, 'dinheiro'),
     retiradaDoCaixa: comoBooleano(bruto.retiradaDoCaixa),
+    fixa: comoBooleano(bruto.fixa),
     beneficiario: comoTexto(bruto.beneficiario),
+    anexo: comoTexto(bruto.anexo),
     observacao: comoTexto(bruto.observacao),
     criadoEm: momento(bruto.criadoEm),
   };
@@ -224,6 +227,7 @@ function lerCusto(bruto: Record<string, unknown>): CustoOperacional | null {
       bruto.formaPagamento == null
         ? null
         : comoOpcao<FormaPagamento>(bruto.formaPagamento, FORMAS, 'dinheiro'),
+    anexo: comoTexto(bruto.anexo),
     observacao: comoTexto(bruto.observacao),
     criadoEm: momento(bruto.criadoEm),
     atualizadoEm: momento(bruto.atualizadoEm),

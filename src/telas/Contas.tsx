@@ -161,6 +161,7 @@ export function Contas() {
                 conta.tipo === 'cheque' && conta.chequeNumero
                   ? `cheque ${conta.chequeNumero}${conta.chequeBanco ? ` · ${conta.chequeBanco}` : ''}`
                   : '',
+                conta.anexo ? 'com foto' : '',
               ].filter(Boolean);
 
               return (

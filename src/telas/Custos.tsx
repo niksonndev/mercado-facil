@@ -44,6 +44,7 @@ export function CustoVazio(competencia: Competencia): CustoOperacional {
     pagoEm: null,
     valorPago: null,
     formaPagamento: null,
+    anexo: '',
     observacao: '',
   });
 }
@@ -190,6 +191,7 @@ export function Custos() {
                       ? `pago em ${formatarData(custo.pagoEm)}`
                       : rotuloPrazo(custo.vencimento, hoje),
                     custo.recorrente ? 'mensal' : '',
+                    custo.anexo ? 'com foto' : '',
                   ]
                     .filter(Boolean)
                     .join(' · ')}
