@@ -32,7 +32,7 @@ export function Dados() {
     definirOcupado(true);
     try {
       const backup = await montarBackup();
-      await baixarBackup();
+      await baixarBackup(backup);
       definirMensagem(
         `Backup gerado com ${totalLancamentos} lançamento(s) e ${backup.dados.fechamentos.length} dia(s) com apurado.`,
       );

@@ -50,8 +50,8 @@ export function nomeDoArquivo(data: DataISO = hojeISO()): string {
 }
 
 /** Dispara o download do backup — é a única cópia que sai do aparelho. */
-export async function baixarBackup(): Promise<void> {
-  const backup = await montarBackup();
+export async function baixarBackup(pronto?: Backup): Promise<void> {
+  const backup = pronto ?? (await montarBackup());
   const conteudo = JSON.stringify(backup, null, 2);
   const blob = new Blob([conteudo], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -92,6 +92,10 @@ const comoOpcao = <T extends string>(valor: unknown, opcoes: readonly T[], padra
   typeof valor === 'string' && (opcoes as readonly string[]).includes(valor)
     ? (valor as T)
     : padrao;
+
+/** Competência no formato AAAA-MM; cai no padrão quando ausente ou inválida. */
+const comoCompetencia = (valor: unknown, padrao: string): string =>
+  typeof valor === 'string' && /^\d{4}-\d{2}$/.test(valor) ? valor : padrao;
 
 const FORMAS = ['dinheiro', 'pix', 'debito', 'credito'] as const;
 const TIPOS_CONTA = ['boleto', 'cheque', 'avista', 'fatura'] as const;
@@ -217,7 +221,7 @@ function lerCusto(bruto: Record<string, unknown>): CustoOperacional | null {
     id: id(bruto.id),
     categoria: comoOpcao<CategoriaCusto>(bruto.categoria, CATEGORIAS_CUSTO, 'outros'),
     descricao: comoTexto(bruto.descricao),
-    competencia: comoTexto(bruto.competencia, vencimento.slice(0, 7)),
+    competencia: comoCompetencia(bruto.competencia, vencimento.slice(0, 7)),
     valorPrevisto: comoCentavos(bruto.valorPrevisto),
     vencimento,
     recorrente: comoBooleano(bruto.recorrente, true),
@@ -303,7 +307,8 @@ function lerConferencia(bruto: Record<string, unknown>): ConferenciaSaldo | null
   if (!contaBancariaId || !/^\d{4}-\d{2}$/.test(competencia)) return null;
 
   return {
-    id: comoTexto(bruto.id, chaveConferencia(contaBancariaId, competencia)),
+    id:
+      comoTexto(bruto.id) || chaveConferencia(contaBancariaId, competencia),
     contaBancariaId,
     competencia,
     saldoExtrato: comoCentavos(bruto.saldoExtrato),

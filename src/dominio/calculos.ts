@@ -632,57 +632,59 @@ const saiuDaConta = (forma: FormaPagamento | null): boolean =>
  * paga no balcão não sabe disso na hora. Então a conta recebe o que é dela por
  * natureza (PIX, débito e o crédito das máquinas) e paga o que não é dinheiro
  * vivo. A folha entra sempre, porque salário não se paga em dinheiro da gaveta.
+ *
+ * `desde` limita o início: por padrão o mês inteiro (dia 1), mas a conferência
+ * passa a data do saldo informado para não somar movimento que já estava dentro
+ * daquele saldo.
  */
 export function movimentoEmConta(
   competencia: Competencia,
   acervo: Acervo,
   hoje: DataISO = hojeISO(),
+  desde: DataISO = `${competencia}-01`,
 ): ResumoContaBancaria {
-  const resumo = resumoDoMes(competencia, acervo, hoje);
+  const pertence = (data: DataISO | null): boolean =>
+    data !== null && data >= desde && competenciaDe(data) === competencia;
+
+  let pix = 0;
+  let debito = 0;
+  for (const fechamento of acervo.fechamentos) {
+    if (!pertence(fechamento.data)) continue;
+    pix += fechamento.pix;
+    debito += fechamento.debito;
+  }
 
   const fornecedores = somarCentavos(
     acervo.contas
-      .filter(
-        (conta) =>
-          conta.pagoEm &&
-          competenciaDe(conta.pagoEm) === competencia &&
-          saiuDaConta(conta.formaPagamento),
-      )
+      .filter((conta) => pertence(conta.pagoEm) && saiuDaConta(conta.formaPagamento))
       .map((conta) => conta.valorPago ?? conta.valor),
   );
 
   const custos = somarCentavos(
     acervo.custos
-      .filter(
-        (custo) =>
-          custo.pagoEm &&
-          competenciaDe(custo.pagoEm) === competencia &&
-          saiuDaConta(custo.formaPagamento),
-      )
+      .filter((custo) => pertence(custo.pagoEm) && saiuDaConta(custo.formaPagamento))
       .map((custo) => custo.valorPago ?? custo.valorPrevisto),
   );
 
   const despesas = somarCentavos(
     acervo.despesas
-      .filter(
-        (despesa) =>
-          competenciaDe(despesa.data) === competencia &&
-          saiuDaConta(despesa.formaPagamento),
-      )
+      .filter((despesa) => pertence(despesa.data) && saiuDaConta(despesa.formaPagamento))
       .map((despesa) => despesa.valor),
   );
 
-  const folha = resumo.saidas.folha;
+  const folha = somarCentavos(
+    acervo.folha
+      .filter((item) => pertence(item.pagoEm))
+      .map((item) => item.valorPago ?? calcularFolha(item).custoEmpresa),
+  );
 
   const cartoes = somarCentavos(
     agendaRecebiveis(acervo, hoje)
-      .filter(
-        (item) => item.recebidoEm && competenciaDe(item.recebidoEm) === competencia,
-      )
+      .filter((item) => pertence(item.recebidoEm))
       .map((item) => item.valorRecebido ?? item.valor),
   );
 
-  const formularios = resumo.porForma.pix + resumo.porForma.debito + cartoes;
+  const formularios = pix + debito + cartoes;
   const saidas = fornecedores + custos + folha + despesas;
 
   return {
@@ -691,8 +693,8 @@ export function movimentoEmConta(
     movimento: formularios - saidas,
     detalhe: {
       formularios,
-      pix: resumo.porForma.pix,
-      debito: resumo.porForma.debito,
+      pix,
+      debito,
       cartoes,
       fornecedores,
       custos,
@@ -706,8 +708,10 @@ export function movimentoEmConta(
  * Saldo que o app espera encontrar no extrato ao fim da competência.
  *
  * Soma o saldo informado na data de partida com o movimento de cada mês até
- * aqui. Cinco anos é o teto do laço: data de partida no futuro ou errada não
- * pode travar a tela.
+ * aqui. No mês da data informada só entra o que aconteceu a partir dela: o
+ * saldo lido no meio do mês já carrega o movimento anterior, e contá-lo de novo
+ * inflaria o esperado. Cinco anos é o teto do laço: data de partida no futuro
+ * ou errada não pode travar a tela.
  */
 export function saldoEsperado(
   competencia: Competencia,
@@ -716,10 +720,12 @@ export function saldoEsperado(
   hoje: DataISO = hojeISO(),
 ): Centavos {
   let saldo = conta.saldoInicial;
-  let mes = competenciaDe(conta.dataSaldoInicial);
+  const inicio = competenciaDe(conta.dataSaldoInicial);
+  let mes = inicio;
 
   for (let passo = 0; passo < 60 && mes <= competencia; passo += 1) {
-    saldo += movimentoEmConta(mes, acervo, hoje).movimento;
+    const desde = mes === inicio ? conta.dataSaldoInicial : `${mes}-01`;
+    saldo += movimentoEmConta(mes, acervo, hoje, desde).movimento;
     mes = adicionarMeses(mes, 1);
   }
 

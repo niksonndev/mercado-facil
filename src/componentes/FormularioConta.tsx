@@ -52,6 +52,9 @@ export function FormularioConta({
   const trocarTipo = (tipo: TipoConta) => {
     // À vista é pago na hora: já marca a data para não esquecer o pagamento.
     const virouAvista = tipo === 'avista' && !rascunho.pagoEm;
+    // Sair do à vista desfaz o pagamento que ele implicava: o boleto volta a
+    // ficar em aberto até alguém marcar de novo.
+    const deixouAvista = rascunho.tipo === 'avista' && tipo !== 'avista';
     // A fatura já nasce com o primeiro cartão do cadastro e o vencimento dele.
     const cartao = cartoes[0];
     const virouFatura = tipo === 'fatura' && !rascunho.cartaoNome && cartao;
@@ -60,6 +63,9 @@ export function FormularioConta({
       tipo,
       ...(virouAvista
         ? { pagoEm: rascunho.emissao ?? hojeISO(), formaPagamento: 'dinheiro' as const }
+        : {}),
+      ...(deixouAvista
+        ? { pagoEm: null, valorPago: null, formaPagamento: null }
         : {}),
       ...(virouFatura && cartao
         ? {

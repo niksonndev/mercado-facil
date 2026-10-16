@@ -242,12 +242,16 @@ export function custoDoProximoMes(
   custo: CustoOperacional,
   competencia: Competencia,
 ): CustoOperacional {
-  const dia = custo.vencimento.slice(8);
+  // O vencimento cai no mesmo dia do mês seguinte; 29, 30 e 31 encostam no
+  // último dia quando o mês é mais curto (31/01 vira 28/02), senão a data
+  // sairia inválida.
+  const ultimoDia = Number(ultimoDiaDoMes(competencia).slice(8));
+  const dia = Math.min(Number(custo.vencimento.slice(8)), ultimoDia);
   return {
     ...custo,
     id: gerarId(),
     competencia,
-    vencimento: `${competencia}-${dia}`,
+    vencimento: `${competencia}-${String(dia).padStart(2, '0')}`,
     pagoEm: null,
     valorPago: null,
     formaPagamento: null,

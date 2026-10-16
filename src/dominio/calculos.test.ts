@@ -623,6 +623,22 @@ describe('conferência do extrato da conta bancária', () => {
     // O saldo foi lido em 01/10: setembro já está dentro dele.
     expect(saldoEsperado('2026-09', ACERVO_BANCO, CONTA, HOJE)).toBe(500000);
   });
+
+  it('no mês do saldo informado só conta o que veio depois da leitura', () => {
+    // Saldo lido no dia 06: o custo e a folha do dia 05 já estavam dentro dele.
+    const noMeioDoMes: ContaBancaria = { ...CONTA, dataSaldoInicial: '2026-10-06' };
+
+    // Entram PIX e débito das vendas do dia 10 (110000) e saem o boleto no PIX
+    // do dia 12 (50000) e a despesa no débito do dia 14 (3000).
+    expect(saldoEsperado('2026-10', ACERVO_BANCO, noMeioDoMes, HOJE)).toBe(557000);
+  });
+
+  it('conta o lançamento que cai no próprio dia da leitura', () => {
+    const noDiaDoCusto: ContaBancaria = { ...CONTA, dataSaldoInicial: '2026-10-05' };
+
+    // A partir do dia 05 o mês inteiro entra: o custo e a folha do dia 05 contam.
+    expect(saldoEsperado('2026-10', ACERVO_BANCO, noDiaDoCusto, HOJE)).toBe(301000);
+  });
 });
 
 describe('fatura do cartão da empresa', () => {
